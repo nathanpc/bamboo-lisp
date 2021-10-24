@@ -1,0 +1,15 @@
+# OpenWatcom
+*.lk1
+*.map
+*.mk
+*.mk1
+*.sym
+*.err
+
+# Object and executable files.
+*.obj
+*.exe
+
+# Misc.
+.DS_Store
+Thumbs.db
