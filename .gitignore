@@ -5,6 +5,7 @@
 *.mk1
 *.sym
 *.err
+*.smp
 
 # Object and executable files.
 *.obj
