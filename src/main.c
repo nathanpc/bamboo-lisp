@@ -10,7 +10,11 @@
 #include <stdint.h>
 #include "bamboo.h"
 
-#define TEST_LEN 11
+// Private definitions.
+#define REPL_INPUT_MAX_LEN 100
+
+// Private methods.
+int readline(char *buf, size_t len);
 
 /**
  * Program's main entry point.
@@ -18,40 +22,63 @@
  * @return 0 if everything went fine.
  */
 int main(void) {
-	int i;
-	const char *str[TEST_LEN];
-	str[0] = "(foo bar)";
-	str[1] = "(foo . bar)";
-	str[2] = "(foo bar baz)";
-	str[3] = "(foo bar . baz)";
-	str[4] = "(test (foo . bar) hello)";
-	str[5] = "(foo . (bar . nil) baz)";
-	str[6] = "(foo (bar baz (test . nil) some (ot . her) thing) another)";
-	str[7] = "(s (t . u) v . (w . nil))";
-	str[8] = "( .";
-	str[9] = "(t . )";
-	str[10] = "(s . f)";
+	char *input;
 
 	// Initialize the interpreter.
 	bamboo_init();
+	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
 
-	for (i = 0; i < TEST_LEN; i++) {
+	// Start the REPL.
+	while (!readline(input, REPL_INPUT_MAX_LEN)) {
 		atom_t atom;
 		bamboo_error_t err;
 
-		printf("> %s" LINEBREAK, str[i]);
-
-		bamboo_print_tokens(str[i]);
-		printf(LINEBREAK);
-
-		err = parse_expr(str[i], &str[i], &atom);
+		// Parse the user's input.
+		err = parse_expr(input, &input, &atom);
 		if (err)
 			bamboo_print_error(err);
+
+		// Print the parsed result.
 		bamboo_print_expr(atom);
-		printf(LINEBREAK);
 		printf(LINEBREAK);
 	}
 
+	// Quit.
+	free(input);
+	printf("Bye!" LINEBREAK);
 	system("pause");
+	return 0;
+}
+
+/**
+ * Reads the user input like a command prompt.
+ *
+ * @param  buf Pointer to the buffer that will hold the user input.
+ * @param  len Maximum length to read the user input.
+ * @return     Non-zero to break out of the REPL loop.
+ */
+int readline(char *buf, size_t len) {
+	uint8_t i;
+
+	// Put some safe guards in place.
+	buf[0] = '\0';
+	buf[len] = '\0';
+
+	// Get user input.
+	printf("> ");
+	for (i = 0; i < REPL_INPUT_MAX_LEN; i++) {
+		// Get character from STDIN.
+		int c = getchar();
+
+		// Did we get a return?
+		if (c == '\n') {
+			buf[i] = '\0';
+			break;
+		}
+
+		// Append character to the buffer.
+	    buf[i] = (char)c;
+	}
+
 	return 0;
 }
