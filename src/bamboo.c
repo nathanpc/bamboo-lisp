@@ -16,8 +16,8 @@
 
 // Token structure.
 typedef struct {
-        const char *start;
-        const char *end;
+	const char *start;
+	const char *end;
 } token_t;
 
 // Private variables.
@@ -145,45 +145,45 @@ bamboo_error_t lex(const char *str, token_t *token) {
  * @return       BAMBOO_OK if we were able to parse the token correctly.
  */
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
-        char *buf;
-        char *buftmp;
+	char *buf;
+	char *buftmp;
     const char *tmp;
-        const char *start = token->start;
-        const char *end = token->end;
+	const char *start = token->start;
+	const char *end = token->end;
 
-        // Check if we are dealing with a number of some kind.
-        if ((start[0] >= '0') && (start[0] <= '9')) {
-                // Try to parse an integer.
-                long num = strtol(start, &buf, 0);
+	// Check if we are dealing with a number of some kind.
+	if ((start[0] >= '0') && (start[0] <= '9')) {
+		// Try to parse an integer.
+		long num = strtol(start, &buf, 0);
 
-                // Check if we were able to parse an integer from the token.
-                if (buf == end) {
-                        atom->type = ATOM_TYPE_INTEGER;
-                        atom->value.integer = num;
+		// Check if we were able to parse an integer from the token.
+		if (buf == end) {
+			atom->type = ATOM_TYPE_INTEGER;
+			atom->value.integer = num;
 
-                        return BAMBOO_OK;
-                }
-        }
+			return BAMBOO_OK;
+		}
+	}
 
-        // Convert the symbol to upper-case.
-        buf = (char *)malloc(sizeof(char) * (end - start + 1));
-        buftmp = buf;
-        tmp = start;
-        while (tmp != end)
-                *buftmp++ = toupper(*tmp++);
-        *buftmp = '\0';
+	// Convert the symbol to upper-case.
+	buf = (char *)malloc(sizeof(char) * (end - start + 1));
+	buftmp = buf;
+	tmp = start;
+	while (tmp != end)
+		*buftmp++ = toupper(*tmp++);
+	*buftmp = '\0';
 
-        // Check if we are dealing with a NIL symbol.
-        if (strcmp(buf, SYMBOL_NIL_STR) == 0) {
-                *atom = nil;
-        } else {
-                // Looks like a regular symbol.
-                *atom = bamboo_symbol(buf);
-        }
+	// Check if we are dealing with a NIL symbol.
+	if (strcmp(buf, SYMBOL_NIL_STR) == 0) {
+		*atom = nil;
+	} else {
+		// Looks like a regular symbol.
+		*atom = bamboo_symbol(buf);
+	}
 
-        // Clean up and return OK.
-        free(buf);
-        return BAMBOO_OK;
+	// Clean up and return OK.
+	free(buf);
+	return BAMBOO_OK;
 }
 
 /**
@@ -272,23 +272,23 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
  */
 bamboo_error_t parse_expr(const char *input, const char **end,
 						  atom_t *atom) {
-        token_t token;
-        bamboo_error_t err;
+	token_t token;
+	bamboo_error_t err;
 
-        err = lex(input, &token);
-        if (err)
-                return err;
+	err = lex(input, &token);
+	if (err)
+		return err;
 
-        switch (token.start[0]) {
-        case '(':
-                return parse_list(token.end, end, atom);
-        case ')':
-                return BAMBOO_PAREN_END;
-        default:
-                return parse_primitive(&token, atom);
-        }
+	switch (token.start[0]) {
+	case '(':
+		return parse_list(token.end, end, atom);
+	case ')':
+		return BAMBOO_PAREN_END;
+	default:
+		return parse_primitive(&token, atom);
+	}
 
-        return BAMBOO_ERROR_UNKNOWN;
+	return BAMBOO_ERROR_UNKNOWN;
 }
 
 /**
@@ -390,7 +390,7 @@ void bamboo_print_tokens(const char *str) {
  * @param str String to be printed.
  */
 void putstr(const char *str) {
-    const char *tmp = str;
+	const char *tmp = str;
 
     while (*tmp)
         putchar(*tmp++);

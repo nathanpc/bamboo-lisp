@@ -16,43 +16,43 @@
 
 // Parser return values.
 typedef enum {
-    BAMBOO_OK = 0,
+	BAMBOO_OK = 0,
 	BAMBOO_PAREN_END,
-    BAMBOO_ERROR_SYNTAX,
+	BAMBOO_ERROR_SYNTAX,
 	BAMBOO_ERROR_UNKNOWN
 } bamboo_error_t;
 
 // Atom types.
 typedef enum {
-    ATOM_TYPE_NIL,
-    ATOM_TYPE_PAIR,
-    ATOM_TYPE_SYMBOL,
-    ATOM_TYPE_INTEGER
+	ATOM_TYPE_NIL,
+	ATOM_TYPE_PAIR,
+	ATOM_TYPE_SYMBOL,
+	ATOM_TYPE_INTEGER
 } atom_type_t;
 
 // Atom structure.
 typedef struct pair_s pair_t;
 typedef struct atom_s atom_t;
 struct atom_s {
-    atom_type_t type;
-    union {
-        pair_t *pair;
-        const char *symbol;
-        long integer;
-    } value;
+	atom_type_t type;
+	union {
+		pair_t *pair;
+		const char *symbol;
+		long integer;
+	} value;
 };
 
 // Atom pair structure.
 struct pair_s {
-    atom_t atom[2];
+	atom_t atom[2];
 };
 
 // Universal atoms.
 static const atom_t nil = { ATOM_TYPE_NIL };
 
 // Core list manipulation.
-#define car(p)     ((p).value.pair->atom[0])
-#define cdr(p)     ((p).value.pair->atom[1])
+#define car(p)	   ((p).value.pair->atom[0])
+#define cdr(p)	   ((p).value.pair->atom[1])
 #define nilp(atom) ((atom).type == ATOM_TYPE_NIL)
 atom_t cons(atom_t _car, atom_t _cdr);
 
@@ -69,4 +69,4 @@ void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
 void bamboo_print_tokens(const char *str);
 
-#endif  // _BAMBOO_H
+#endif	// _BAMBOO_H

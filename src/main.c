@@ -29,14 +29,14 @@ int main(void) {
 	str[6] = "(foo (bar baz (test . nil) some (ot . her) thing) another)";
 	str[7] = "(s (t . u) v . (w . nil))";
 
-    printf("Bamboo LISP v0.1a" LINEBREAK LINEBREAK);
+	printf("Bamboo LISP v0.1a" LINEBREAK LINEBREAK);
 
 	for (i = 0; i < TEST_LEN; i++) {
 		atom_t atom;
 		bamboo_error_t err;
 
 		printf("> %s" LINEBREAK, str[i]);
-		
+
 		bamboo_print_tokens(str[i]);
 		printf(LINEBREAK);
 
@@ -49,5 +49,5 @@ int main(void) {
 	}
 
 	system("pause");
-    return 0;
+	return 0;
 }
