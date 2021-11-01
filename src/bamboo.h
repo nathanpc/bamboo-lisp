@@ -56,6 +56,9 @@ static const atom_t nil = { ATOM_TYPE_NIL };
 #define nilp(atom) ((atom).type == ATOM_TYPE_NIL)
 atom_t cons(atom_t _car, atom_t _cdr);
 
+// Initialization.
+bamboo_error_t bamboo_init(void);
+
 // Primitive creation.
 atom_t bamboo_int(long num);
 atom_t bamboo_symbol(const char *name);
@@ -65,6 +68,7 @@ bamboo_error_t parse_expr(const char *input, const char **end,
 						  atom_t *atom);
 
 // Debugging.
+const char* bamboo_error_detail(void);
 void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
 void bamboo_print_tokens(const char *str);

@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include "bamboo.h"
 
-#define TEST_LEN 8
+#define TEST_LEN 11
 
 /**
  * Program's main entry point.
@@ -28,8 +28,12 @@ int main(void) {
 	str[5] = "(foo . (bar . nil) baz)";
 	str[6] = "(foo (bar baz (test . nil) some (ot . her) thing) another)";
 	str[7] = "(s (t . u) v . (w . nil))";
+	str[8] = "( .";
+	str[9] = "(t . )";
+	str[10] = "(s . f)";
 
-	printf("Bamboo LISP v0.1a" LINEBREAK LINEBREAK);
+	// Initialize the interpreter.
+	bamboo_init();
 
 	for (i = 0; i < TEST_LEN; i++) {
 		atom_t atom;

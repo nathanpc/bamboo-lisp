@@ -12,7 +12,8 @@
 #include <ctype.h>
 
 // Private definitions.
-#define SYMBOL_NIL_STR "NIL"
+#define SYMBOL_NIL_STR    "NIL"
+#define ERROR_MSG_STR_LEN 100
 
 // Token structure.
 typedef struct {
@@ -21,13 +22,31 @@ typedef struct {
 } token_t;
 
 // Private variables.
-static atom_t symbol_table = { ATOM_TYPE_NIL };
+static char bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
+static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 
 // Private methods.
 void putstr(const char *str);
+void set_error_msg(const char *msg);
 bamboo_error_t lex(const char *str, token_t *token);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
 bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
+
+/**
+ * Initializes the Bamboo interpreter environment.
+ *
+ * @return BAMBOO_OK if everything went fine.
+ */
+bamboo_error_t bamboo_init(void) {
+	// Display a pretty welcome message.
+	printf("Bamboo Lisp v0.1a" LINEBREAK LINEBREAK);
+
+	// Make sure the error message string is properly terminated.
+	bamboo_error_msg[0] = '\0';
+	bamboo_error_msg[ERROR_MSG_STR_LEN] = '\0';
+
+	return BAMBOO_OK;
+}
 
 /**
  * Builds an integer atom.
@@ -56,7 +75,7 @@ atom_t bamboo_symbol(const char *name) {
     atom_t tmp;
 
     // Check if the symbol already exists in the symbol table.
-    tmp = symbol_table;
+    tmp = bamboo_symbol_table;
     while (!nilp(tmp)) {
         atom = car(tmp);
         if (strcmp(atom.value.symbol, name) == 0)
@@ -70,7 +89,7 @@ atom_t bamboo_symbol(const char *name) {
     atom.value.symbol = strdup(name);
 
     // Prepend the symbol atom to the symbol table and return the atom.
-    symbol_table = cons(atom, symbol_table);
+    bamboo_symbol_table = cons(atom, bamboo_symbol_table);
     return atom;
 }
 
@@ -119,6 +138,7 @@ bamboo_error_t lex(const char *str, token_t *token) {
         token->start = NULL;
         token->end = NULL;
 
+		set_error_msg("Empty line");
         return BAMBOO_ERROR_SYNTAX;
     }
 
@@ -215,13 +235,17 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 			token_t test_token;
 
 			// Check if the pair separator is the first token in the atom.
-			if (nilp(*atom))
+			if (nilp(*atom)) {
+				set_error_msg("Pair delimiter without left-hand atom");
 				return BAMBOO_ERROR_SYNTAX;
+			}
 
 			// Check if we have something after the pair separator.
 			err = lex(token.end, &test_token);
-			if (err || (test_token.start[0] == ')'))
+			if (err || (test_token.start[0] == ')')) {
+				set_error_msg("Pair ends without right-hand atom");
 				return BAMBOO_ERROR_SYNTAX;
+			}
 
 			// Move to the next token.
 			is_pair = true;
@@ -249,8 +273,10 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 			last_atom = &cdr(*atom);
 		} else {
 			// Check if we are trying to append something to a pair.
-			if (!nilp(*last_atom))
+			if (!nilp(*last_atom)) {
+				set_error_msg("Tried to append an atom to a pair");
 				return BAMBOO_ERROR_SYNTAX;
+			}
 
 			// Check if we are dealing with a pair.
 			if (is_pair) {
@@ -336,6 +362,8 @@ void bamboo_print_expr(atom_t atom) {
 
         putchar(')');
         break;
+	default:
+		putstr("Don't know how to show this");
     }
 }
 
@@ -353,10 +381,12 @@ void bamboo_print_error(bamboo_error_t err) {
 		putstr("PARENTHESIS ENDED");
 		break;
 	case BAMBOO_ERROR_SYNTAX:
-		putstr("SYNTAX ERROR");
+		putstr("SYNTAX ERROR: ");
+		putstr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_UNKNOWN:
-		putstr("UNKNOWN ERROR");
+		putstr("UNKNOWN ERROR: ");
+		putstr(bamboo_error_detail());
 		break;
 	}
 
@@ -389,6 +419,24 @@ void bamboo_print_tokens(const char *str) {
 		printf("'%s' ", buf);
 		free(buf);
 	}
+}
+
+/**
+ * Gets the last detailed error message from the interpreter.
+ *
+ * @return Last detailed error message.
+ */
+const char* bamboo_error_detail(void) {
+	return bamboo_error_msg;
+}
+
+/**
+ * Sets the internal error message variable.
+ *
+ * @param msg Error message to be set.
+ */
+void set_error_msg(const char *msg) {
+	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
 
 /**
