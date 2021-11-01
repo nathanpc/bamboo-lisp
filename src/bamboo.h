@@ -17,7 +17,9 @@
 // Parser return values.
 typedef enum {
     BAMBOO_OK = 0,
-    BAMBOO_ERROR_SYNTAX
+	BAMBOO_PAREN_END,
+    BAMBOO_ERROR_SYNTAX,
+	BAMBOO_ERROR_UNKNOWN
 } bamboo_error_t;
 
 // Atom types.
@@ -58,7 +60,13 @@ atom_t cons(atom_t _car, atom_t _cdr);
 atom_t bamboo_int(long num);
 atom_t bamboo_symbol(const char *name);
 
+// Parsing.
+bamboo_error_t parse_expr(const char *input, const char **end,
+						  atom_t *atom);
+
 // Debugging.
+void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
+void bamboo_print_tokens(const char *str);
 
 #endif  // _BAMBOO_H

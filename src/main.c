@@ -10,25 +10,44 @@
 #include <stdint.h>
 #include "bamboo.h"
 
+#define TEST_LEN 8
+
 /**
  * Program's main entry point.
  *
  * @return 0 if everything went fine.
  */
 int main(void) {
-    printf("Bamboo LISP v0.1a" LINEBREAK);
+	int i;
+	const char *str[TEST_LEN];
+	str[0] = "(foo bar)";
+	str[1] = "(foo . bar)";
+	str[2] = "(foo bar baz)";
+	str[3] = "(foo bar . baz)";
+	str[4] = "(test (foo . bar) hello)";
+	str[5] = "(foo . (bar . nil) baz)";
+	str[6] = "(foo (bar baz (test . nil) some (ot . her) thing) another)";
+	str[7] = "(s (t . u) v . (w . nil))";
 
-    bamboo_print_expr(bamboo_int(1234));
-    printf(LINEBREAK);
-    bamboo_print_expr(bamboo_symbol("asymbol"));
-    printf(LINEBREAK);
-    bamboo_print_expr(cons(bamboo_symbol("foo"), bamboo_symbol("bar")));
-    printf(LINEBREAK);
-    bamboo_print_expr(cons(bamboo_int(1),
-        cons(bamboo_int(2), cons(bamboo_int(3), nil))));
-    printf(LINEBREAK);
+    printf("Bamboo LISP v0.1a" LINEBREAK LINEBREAK);
 
-    printf("Press any key to continue..." LINEBREAK);
-    getch();
+	for (i = 0; i < TEST_LEN; i++) {
+		atom_t atom;
+		bamboo_error_t err;
+
+		printf("> %s" LINEBREAK, str[i]);
+		
+		bamboo_print_tokens(str[i]);
+		printf(LINEBREAK);
+
+		err = parse_expr(str[i], &str[i], &atom);
+		if (err)
+			bamboo_print_error(err);
+		bamboo_print_expr(atom);
+		printf(LINEBREAK);
+		printf(LINEBREAK);
+	}
+
+	system("pause");
     return 0;
 }
