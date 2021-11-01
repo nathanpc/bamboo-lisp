@@ -212,8 +212,15 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 	while (!(err = lex(token.end, &token))) {
 		// Check if we have a pair.
 		if (token.start[0] == '.') {
+			token_t test_token;
+
 			// Check if the pair separator is the first token in the atom.
 			if (nilp(*atom))
+				return BAMBOO_ERROR_SYNTAX;
+
+			// Check if we have something after the pair separator.
+			err = lex(token.end, &test_token);
+			if (err || (test_token.start[0] == ')'))
 				return BAMBOO_ERROR_SYNTAX;
 
 			// Move to the next token.
