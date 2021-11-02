@@ -98,6 +98,22 @@ atom_t bamboo_symbol(const char *name) {
 }
 
 /**
+ * Builds an built-in function atom.
+ *
+ * @param  func Built-in C function.
+ * @return      Built-in function atom.
+ */
+atom_t bamboo_builtin(builtin_func_t func) {
+	atom_t atom;
+
+	// Populate the atom.
+	atom.type = ATOM_TYPE_BUILTIN;
+	atom.value.builtin = func;
+
+	return atom;
+}
+
+/**
  * Builds a pair atom from two other atoms.
  *
  * @param  _car Left-hand side of the atom pair.
@@ -559,6 +575,9 @@ void bamboo_print_expr(atom_t atom) {
 
         putchar(')');
         break;
+	case ATOM_TYPE_BUILTIN:
+		printf("#<BUILTIN:%p>", atom.value.builtin);
+		break;
 	default:
 		putstr("Don't know how to show this");
     }

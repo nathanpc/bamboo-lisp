@@ -30,19 +30,26 @@ typedef enum {
 	ATOM_TYPE_NIL,
 	ATOM_TYPE_PAIR,
 	ATOM_TYPE_SYMBOL,
-	ATOM_TYPE_INTEGER
+	ATOM_TYPE_INTEGER,
+	ATOM_TYPE_BUILTIN
 } atom_type_t;
 
-// Atom structure.
+// Atom structures typedefs.
 typedef struct pair_s pair_t;
 typedef struct atom_s atom_t;
 typedef atom_t env_t;
+
+// Built-in function prototype typedef.
+typedef bamboo_error_t (*builtin_func_t)(atom_t args, atom_t *result);
+
+// Atom structure.
 struct atom_s {
 	atom_type_t type;
 	union {
 		pair_t *pair;
 		const char *symbol;
 		long integer;
+		builtin_func_t builtin;
 	} value;
 };
 
@@ -72,6 +79,7 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
 // Primitive creation.
 atom_t bamboo_int(long num);
 atom_t bamboo_symbol(const char *name);
+atom_t bamboo_builtin(builtin_func_t func);
 
 // Parsing and evaluation.
 bamboo_error_t parse_expr(const char *input, const char **end,
