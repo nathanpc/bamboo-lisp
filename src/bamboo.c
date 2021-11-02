@@ -35,15 +35,19 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
 /**
  * Initializes the Bamboo interpreter environment.
  *
- * @return BAMBOO_OK if everything went fine.
+ * @param  env Pointer to the root environment of the interpreter.
+ * @return     BAMBOO_OK if everything went fine.
  */
-bamboo_error_t bamboo_init(void) {
+bamboo_error_t bamboo_init(env_t *env) {
 	// Display a pretty welcome message.
 	printf("Bamboo Lisp v0.1a" LINEBREAK LINEBREAK);
 
 	// Make sure the error message string is properly terminated.
 	bamboo_error_msg[0] = '\0';
 	bamboo_error_msg[ERROR_MSG_STR_LEN] = '\0';
+
+	// Initialize the root environment.
+	*env = bamboo_env_new(nil);
 
 	return BAMBOO_OK;
 }
@@ -114,6 +118,26 @@ atom_t cons(atom_t _car, atom_t _cdr) {
     return pair;
 }
 
+/**
+ * Checks if an atom is a list.
+ *
+ * @param  expr Expression to be checked.
+ * @return      TRUE if the expression is a valid list.
+ */
+bool listp(atom_t expr) {
+	// Iterate over the expression until we reach the final nil atom.
+	while (!nilp(expr)) {
+		// If every atom of a list is not a pair, then it's not a list.
+		if (expr.type != ATOM_TYPE_PAIR)
+			return false;
+
+		// Go to the next item.
+		expr = cdr(expr);
+	}
+
+	// We've successfully iterated over the whole list, so it must be a list.
+	return true;
+}
 
 /**
  * A very simple lexer to find the beginning and the end of tokens in a string.
@@ -325,6 +349,179 @@ bamboo_error_t parse_expr(const char *input, const char **end,
 }
 
 /**
+ * Evaluates an expression in a given environment.
+ *
+ * @param  expr   Expression to be evaluated.
+ * @param  env    Environment list to use for this evaluation.
+ * @param  result Pointer to the resulting atom of the evaluation.
+ * @return        BAMBOO_OK if the evaluation was successful.
+ */
+bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
+	atom_t operator;
+	atom_t args;
+	bamboo_error_t err;
+
+	// Clean slate.
+	*result = nil;
+
+	// Check if the expression is simple and doesn't require any manipulation.
+	if (expr.type == ATOM_TYPE_SYMBOL) {
+		// A symbol from the environment was requested.
+		return bamboo_env_get(env, expr, result);
+	} else if (expr.type != ATOM_TYPE_PAIR) {
+		// Literals always evaluate to themselves.
+		*result = expr;
+		return BAMBOO_OK;
+	}
+
+	// Check if we actually have a list to evaluate.
+	if (!listp(expr)) {
+		set_error_msg("Expression is not of list type");
+		return BAMBOO_ERROR_SYNTAX;
+	}
+
+	// Get the operator and its arguments.
+	operator = car(expr);
+	args = cdr(expr);
+
+	// The operator must always be a valid symbol.
+	if (operator.type == ATOM_TYPE_SYMBOL) {
+		// Check which special form we need.
+		if (strcmp(operator.value.symbol, "QUOTE") == 0) {
+			// Check if we have the single required arguments.
+			if (nilp(args) || !nilp(cdr(args))) {
+				set_error_msg("Wrong number of arguments. Expected 1");
+				return BAMBOO_ERROR_ARGUMENTS;
+			}
+
+			// Return the arguments without evaluating.
+			*result = car(args);
+			return BAMBOO_OK;
+		} else if (strcmp(operator.value.symbol, "DEFINE") == 0) {
+			atom_t symbol;
+			atom_t value;
+
+			// Check if we have both of the required 2 arguments.
+			if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args)))) {
+				set_error_msg("Wrong number of arguments. Expected 2");
+				return BAMBOO_ERROR_ARGUMENTS;
+			}
+
+			// Get symbol.
+			symbol = car(args);
+			if (symbol.type != ATOM_TYPE_SYMBOL) {
+				set_error_msg("Argument 0 should be of type symbol");
+				return BAMBOO_ERROR_WRONG_TYPE;
+			}
+
+			// Evaluate value before assigning it to the symbol.
+			err = bamboo_eval_expr(car(cdr(args)), env, &value);
+			if (err)
+				return err;
+
+			// Put the symbol in th environment.
+			*result = symbol;
+			return bamboo_env_set(env, symbol, value);
+		}
+
+		set_error_msg("Operator definition not found");
+		return BAMBOO_ERROR_SYNTAX;
+	}
+
+	set_error_msg("Operator wasn't of symbol type");
+	return BAMBOO_ERROR_SYNTAX;
+}
+
+/**
+ * Creates a new child environment list.
+ *
+ * @param  parent Parent environment to this new child.
+ * @return        New child environment list.
+ */
+env_t bamboo_env_new(env_t parent) {
+	return cons(parent, nil);
+}
+
+/**
+ * Gets a symbol definition from an environment list recursively searching
+ * through its parents.
+ *
+ * @param  env    Environment list to search for the desired symbol in.
+ * @param  symbol Symbol you're searching for.
+ * @param  atom   Pointer to the resulting atom of the symbol definition.
+ * @return        BAMBOO_OK if the symbol was found. BAMBOO_ERROR_UNBOUND
+ *                otherwise.
+ */
+bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
+	env_t parent = car(env);
+	env_t current = cdr(env);
+
+	// Clean up the result just in case.
+	*atom = nil;
+
+	// Iterate through the symbols in the environment list.
+	while (!nilp(current)) {
+		// Get symbol-value pair.
+		atom_t item = car(current);
+
+		// Take advantage of the fact we can't have different symbols with same
+		// name to compare them by pointer instead of having to do strcmp.
+		if (car(item).value.symbol == symbol.value.symbol) {
+			*atom = cdr(item);
+			return BAMBOO_OK;
+		}
+
+		// Check the next symbol in the list.
+		current = cdr(current);
+	}
+
+	// Check if we've reached the end of our parent environments to search for.
+	if (nilp(parent)) {
+		set_error_msg("Symbol not found in any of the environments");
+		return BAMBOO_ERROR_UNBOUND;
+	}
+
+	// Search for the symbol in the parent.
+	return bamboo_env_get(parent, symbol, atom);
+}
+
+/**
+ * Creates a new symbol inside an environment or changes it if it already
+ * exists in the specified environment.
+ *
+ * @param  env    Parent environment where the symbol resides.
+ * @param  symbol Symbol to be created or edited.
+ * @param  value  Value attributed to the symbol.
+ * @return        BAMBOO_OK if the operation was successful.
+ */
+bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
+	env_t current = cdr(env);
+	atom_t item = nil;
+
+	// Iterate over the symbols in the environment list checking if the symbol
+	// already exists in the current environment.
+	while (!nilp(current)) {
+		// Get a symbol from the list.
+		item = car(current);
+
+		// Check if the symbol matches another one in the environment.
+		if (car(item).value.symbol == symbol.value.symbol) {
+			cdr(item) = value;
+			return BAMBOO_OK;
+		}
+
+		// Go to the next symbol.
+		current = cdr(current);
+	}
+
+	// Looks like this is a new symbol definition. Create it then...
+	item = cons(symbol, value);
+	cdr(env) = cons(item, cdr(env));
+
+	return BAMBOO_OK;
+}
+
+/**
  * Prints the contents of an atom in a standard way.
  *
  * @param atom Atom to have its contents printed.
@@ -382,6 +579,18 @@ void bamboo_print_error(bamboo_error_t err) {
 		break;
 	case BAMBOO_ERROR_SYNTAX:
 		putstr("SYNTAX ERROR: ");
+		putstr(bamboo_error_detail());
+		break;
+	case BAMBOO_ERROR_UNBOUND:
+		putstr("UNBOUND SYMBOL ERROR: ");
+		putstr(bamboo_error_detail());
+		break;
+	case BAMBOO_ERROR_ARGUMENTS:
+		putstr("INCORRECT ARGUMENT ERROR: ");
+		putstr(bamboo_error_detail());
+		break;
+	case BAMBOO_ERROR_WRONG_TYPE:
+		putstr("WRONG TYPE ERROR: ");
 		putstr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_UNKNOWN:

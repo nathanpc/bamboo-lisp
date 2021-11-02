@@ -19,6 +19,9 @@ typedef enum {
 	BAMBOO_OK = 0,
 	BAMBOO_PAREN_END,
 	BAMBOO_ERROR_SYNTAX,
+	BAMBOO_ERROR_UNBOUND,
+	BAMBOO_ERROR_ARGUMENTS,
+	BAMBOO_ERROR_WRONG_TYPE,
 	BAMBOO_ERROR_UNKNOWN
 } bamboo_error_t;
 
@@ -33,6 +36,7 @@ typedef enum {
 // Atom structure.
 typedef struct pair_s pair_t;
 typedef struct atom_s atom_t;
+typedef atom_t env_t;
 struct atom_s {
 	atom_type_t type;
 	union {
@@ -55,17 +59,24 @@ static const atom_t nil = { ATOM_TYPE_NIL };
 #define cdr(p)	   ((p).value.pair->atom[1])
 #define nilp(atom) ((atom).type == ATOM_TYPE_NIL)
 atom_t cons(atom_t _car, atom_t _cdr);
+bool listp(atom_t expr);
 
 // Initialization.
-bamboo_error_t bamboo_init(void);
+bamboo_error_t bamboo_init(env_t *env);
+
+// Environment.
+env_t bamboo_env_new(env_t parent);
+bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
+bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
 
 // Primitive creation.
 atom_t bamboo_int(long num);
 atom_t bamboo_symbol(const char *name);
 
-// Parsing.
+// Parsing and evaluation.
 bamboo_error_t parse_expr(const char *input, const char **end,
 						  atom_t *atom);
+bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 
 // Debugging.
 const char* bamboo_error_detail(void);

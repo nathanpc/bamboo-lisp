@@ -23,23 +23,40 @@ int readline(char *buf, size_t len);
  */
 int main(void) {
 	char *input;
+	bamboo_error_t err;
+	env_t env;
 
 	// Initialize the interpreter.
-	bamboo_init();
-	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
+	err = bamboo_init(&env);
+	if (err)
+		return err;
 
 	// Start the REPL.
+	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
 	while (!readline(input, REPL_INPUT_MAX_LEN)) {
-		atom_t atom;
-		bamboo_error_t err;
+		atom_t parsed;
+		atom_t result;
 
 		// Parse the user's input.
-		err = parse_expr(input, &input, &atom);
-		if (err)
+		err = parse_expr(input, &input, &parsed);
+		if (err) {
 			bamboo_print_error(err);
+			printf(LINEBREAK);
 
-		// Print the parsed result.
-		bamboo_print_expr(atom);
+			continue;
+		}
+
+		// Evaluate the parsed expression.
+		err = bamboo_eval_expr(parsed, env, &result);
+		if (err) {
+			bamboo_print_error(err);
+			printf(LINEBREAK);
+
+			continue;
+		}
+
+		// Print the evaluated result.
+		bamboo_print_expr(result);
 		printf(LINEBREAK);
 	}
 
