@@ -28,6 +28,7 @@ static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 // Private methods.
 void putstr(const char *str);
 void set_error_msg(const char *msg);
+uint8_t list_count(atom_t list);
 atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const char *str, token_t *token);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
@@ -224,6 +225,29 @@ atom_t shallow_copy_list(atom_t list) {
 	}
 
 	return copied;
+}
+
+/**
+ * Counts the number of elements in a list.
+ *
+ * @param  list List atom to have its elements counted.
+ * @return      Number of elements in the list. 0 if it isn't a valid list.
+ */
+uint8_t list_count(atom_t list) {
+	uint8_t count = 0;
+	
+	// Iterate over the list until we reach the final nil atom.
+	while (!nilp(list)) {
+		// If every atom of a list is not a pair, then it's not a list.
+		if (list.type != ATOM_TYPE_PAIR)
+			return 0;
+
+		// Go to the next item.
+		list = cdr(list);
+		count++;
+	}
+
+	return count;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +507,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 		// Check which special form we need.
 		if (strcmp(operator.value.symbol, "QUOTE") == 0) {
 			// Check if we have the single required arguments.
-			if (nilp(args) || !nilp(cdr(args))) {
+			if (list_count(args) != 1) {
 				set_error_msg("Wrong number of arguments. Expected 1");
 				return BAMBOO_ERROR_ARGUMENTS;
 			}
@@ -496,7 +520,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			atom_t value;
 
 			// Check if we have both of the required 2 arguments.
-			if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args)))) {
+			if (list_count(args) != 2) {
 				set_error_msg("Wrong number of arguments. Expected 2");
 				return BAMBOO_ERROR_ARGUMENTS;
 			}
@@ -801,7 +825,7 @@ void set_error_msg(const char *msg) {
 
 bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (nilp(args) || !nilp(cdr(args))) {
+	if (list_count(args) != 1) {
 		set_error_msg("This function expects a single argument");
 		return BAMBOO_ERROR_ARGUMENTS;
 	}
@@ -824,7 +848,7 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 
 bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (nilp(args) || !nilp(cdr(args))) {
+	if (list_count(args) != 1) {
 		set_error_msg("This function expects a single argument");
 		return BAMBOO_ERROR_ARGUMENTS;
 	}
@@ -847,7 +871,7 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 
 bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args)))) {
+	if (list_count(args) != 2) {
 		set_error_msg("This function expects 2 arguments");
 		return BAMBOO_ERROR_ARGUMENTS;
 	}
