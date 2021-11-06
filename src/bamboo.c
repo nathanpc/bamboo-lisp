@@ -63,6 +63,12 @@ bamboo_error_t bamboo_init(env_t *env) {
 	return BAMBOO_OK;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                           Primitive Constructors                           //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * Builds an integer atom.
  *
@@ -124,6 +130,12 @@ atom_t bamboo_builtin(builtin_func_t func) {
 	return atom;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                           List Atom Manipulation                           //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * Builds a pair atom from two other atoms.
  *
@@ -143,35 +155,6 @@ atom_t cons(atom_t _car, atom_t _cdr) {
     cdr(pair) = _cdr;
 
     return pair;
-}
-
-/**
- * Creates a shallow copy of a list.
- *
- * @param  list List to be copied.
- * @return      Shallow copy of the list.
- */
-atom_t shallow_copy_list(atom_t list) {
-	atom_t copied;
-	atom_t tmp;
-
-	// Check if we actually got nil.
-	if (nilp(list))
-		return nil;
-
-	// Copy first item of the list and preserve the list root.
-	copied = cons(car(list), nil);
-	tmp = copied;
-
-	// Iterate through the list copying each item into our own list.
-	list = cdr(list);
-	while (!nilp(list)) {
-		cdr(tmp) = cons(car(list), nil);
-		tmp = cdr(tmp);
-		list = cdr(list);
-	}
-
-	return copied;
 }
 
 /**
@@ -213,6 +196,41 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 	// Call the built-in function.
 	return (*func.value.builtin)(args, result);
 }
+
+/**
+ * Creates a shallow copy of a list.
+ *
+ * @param  list List to be copied.
+ * @return      Shallow copy of the list.
+ */
+atom_t shallow_copy_list(atom_t list) {
+	atom_t copied;
+	atom_t tmp;
+
+	// Check if we actually got nil.
+	if (nilp(list))
+		return nil;
+
+	// Copy first item of the list and preserve the list root.
+	copied = cons(car(list), nil);
+	tmp = copied;
+
+	// Iterate through the list copying each item into our own list.
+	list = cdr(list);
+	while (!nilp(list)) {
+		cdr(tmp) = cons(car(list), nil);
+		tmp = cdr(tmp);
+		list = cdr(list);
+	}
+
+	return copied;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                      Lexing, Parsing, and Evaluation                       //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * A very simple lexer to find the beginning and the end of tokens in a string.
@@ -524,6 +542,12 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 	return apply(operator, args, result);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                                Environment                                 //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * Creates a new child environment list.
  *
@@ -626,6 +650,12 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
 									  builtin_func_t func) {
 	return bamboo_env_set(env, bamboo_symbol(name), bamboo_builtin(func));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                                 Debugging                                  //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Prints the contents of an atom in a standard way.
@@ -739,6 +769,12 @@ void bamboo_print_tokens(const char *str) {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                               Error Handling                               //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
 /**
  * Gets the last detailed error message from the interpreter.
  *
@@ -756,6 +792,12 @@ const char* bamboo_error_detail(void) {
 void set_error_msg(const char *msg) {
 	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                             Built-in Functions                             //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
@@ -814,6 +856,12 @@ bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 	*result = cons(car(args), car(cdr(args)));
 	return BAMBOO_OK;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                          Miscellaneous Utilities                           //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Prints a string to stdout. Just like puts but without the newline.
