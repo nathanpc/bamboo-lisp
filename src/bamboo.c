@@ -87,6 +87,22 @@ atom_t bamboo_int(long num) {
 }
 
 /**
+ * Builds an floating-point atom.
+ *
+ * @param  num Double floating-point number.
+ * @return     Floating-point atom.
+ */
+atom_t bamboo_float(double num) {
+    atom_t atom;
+
+    // Populate the atom.
+    atom.type = ATOM_TYPE_FLOAT;
+    atom.value.dfloat = num;
+
+    return atom;
+}
+
+/**
  * Builds an symbol atom.
  *
  * @param  name Symbol name.
@@ -314,13 +330,23 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 
 	// Check if we are dealing with a number of some kind.
 	if ((start[0] >= '0') && (start[0] <= '9')) {
+		long integer;
+		double dfloat;
+		
 		// Try to parse an integer.
-		long num = strtol(start, &buf, 0);
-
-		// Check if we were able to parse an integer from the token.
+		integer = strtol(start, &buf, 0);
 		if (buf == end) {
 			atom->type = ATOM_TYPE_INTEGER;
-			atom->value.integer = num;
+			atom->value.integer = integer;
+
+			return BAMBOO_OK;
+		}
+
+		// Try to parse an float.
+		dfloat = strtod(start, &buf);
+		if (buf == end) {
+			atom->type = ATOM_TYPE_FLOAT;
+			atom->value.dfloat = dfloat;
 
 			return BAMBOO_OK;
 		}
@@ -696,6 +722,9 @@ void bamboo_print_expr(atom_t atom) {
         break;
     case ATOM_TYPE_INTEGER:
         printf("%ld", atom.value.integer);
+        break;
+    case ATOM_TYPE_FLOAT:
+        printf("%g", atom.value.dfloat);
         break;
     case ATOM_TYPE_PAIR:
         putchar('(');

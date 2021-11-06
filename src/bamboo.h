@@ -31,6 +31,7 @@ typedef enum {
 	ATOM_TYPE_PAIR,
 	ATOM_TYPE_SYMBOL,
 	ATOM_TYPE_INTEGER,
+	ATOM_TYPE_FLOAT,
 	ATOM_TYPE_BUILTIN
 } atom_type_t;
 
@@ -49,6 +50,7 @@ struct atom_s {
 		pair_t *pair;
 		const char *symbol;
 		long integer;
+		double dfloat;
 		builtin_func_t builtin;
 	} value;
 };
@@ -81,6 +83,7 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
 
 // Primitive creation.
 atom_t bamboo_int(long num);
+atom_t bamboo_float(double num);
 atom_t bamboo_symbol(const char *name);
 atom_t bamboo_builtin(builtin_func_t func);
 
