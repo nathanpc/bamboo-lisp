@@ -28,9 +28,15 @@ static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 // Private methods.
 void putstr(const char *str);
 void set_error_msg(const char *msg);
+atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const char *str, token_t *token);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
 bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
+
+// Built-in functions.
+bamboo_error_t builtin_car(atom_t args, atom_t *result);
+bamboo_error_t builtin_cdr(atom_t args, atom_t *result);
+bamboo_error_t builtin_cons(atom_t args, atom_t *result);
 
 /**
  * Initializes the Bamboo interpreter environment.
@@ -48,6 +54,11 @@ bamboo_error_t bamboo_init(env_t *env) {
 
 	// Initialize the root environment.
 	*env = bamboo_env_new(nil);
+
+	// Populate the environment with our built-in functions.
+	bamboo_env_set_builtin(*env, "CAR", builtin_car);
+	bamboo_env_set_builtin(*env, "CDR", builtin_cdr);
+	bamboo_env_set_builtin(*env, "CONS", builtin_cons);
 
 	return BAMBOO_OK;
 }
@@ -135,6 +146,35 @@ atom_t cons(atom_t _car, atom_t _cdr) {
 }
 
 /**
+ * Creates a shallow copy of a list.
+ *
+ * @param  list List to be copied.
+ * @return      Shallow copy of the list.
+ */
+atom_t shallow_copy_list(atom_t list) {
+	atom_t copied;
+	atom_t tmp;
+
+	// Check if we actually got nil.
+	if (nilp(list))
+		return nil;
+
+	// Copy first item of the list and preserve the list root.
+	copied = cons(car(list), nil);
+	tmp = copied;
+
+	// Iterate through the list copying each item into our own list.
+	list = cdr(list);
+	while (!nilp(list)) {
+		cdr(tmp) = cons(car(list), nil);
+		tmp = cdr(tmp);
+		list = cdr(list);
+	}
+
+	return copied;
+}
+
+/**
  * Checks if an atom is a list.
  *
  * @param  expr Expression to be checked.
@@ -153,6 +193,25 @@ bool listp(atom_t expr) {
 
 	// We've successfully iterated over the whole list, so it must be a list.
 	return true;
+}
+
+/**
+ * Calls a built-in function with the supplied arguments and get the result.
+ *
+ * @param  func   Built-in function atom.
+ * @param  args   Arguments to be passed to the function.
+ * @param  result Pointer to the result of the operation.
+ * @return        BAMBOO_OK if the function call was successful.
+ */
+bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
+	// Check if we actually have a built-in function.
+	if (func.type != ATOM_TYPE_BUILTIN) {
+		set_error_msg("Atom should be of type builtin");
+		return BAMBOO_ERROR_WRONG_TYPE;
+	}
+
+	// Call the built-in function.
+	return (*func.value.builtin)(args, result);
 }
 
 /**
@@ -375,6 +434,7 @@ bamboo_error_t parse_expr(const char *input, const char **end,
 bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 	atom_t operator;
 	atom_t args;
+	atom_t tmp;
 	bamboo_error_t err;
 
 	// Clean slate.
@@ -400,7 +460,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 	operator = car(expr);
 	args = cdr(expr);
 
-	// The operator must always be a valid symbol.
+	// Check if it's a special forms.
 	if (operator.type == ATOM_TYPE_SYMBOL) {
 		// Check which special form we need.
 		if (strcmp(operator.value.symbol, "QUOTE") == 0) {
@@ -439,13 +499,29 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			*result = symbol;
 			return bamboo_env_set(env, symbol, value);
 		}
-
-		set_error_msg("Operator definition not found");
-		return BAMBOO_ERROR_SYNTAX;
 	}
 
-	set_error_msg("Operator wasn't of symbol type");
-	return BAMBOO_ERROR_SYNTAX;
+	// Evaluate operator.
+	err = bamboo_eval_expr(operator, env, &operator);
+	if (err)
+		return err;
+
+	// Copy the arguments list to allow for future use without being overritten.
+	args = shallow_copy_list(args);
+
+	// Evaluate the arguments.
+	tmp = args;
+	while (!nilp(tmp)) {
+		err = bamboo_eval_expr(car(tmp), env, &car(tmp));
+		if (err)
+			return err;
+
+		// Go to the next element in the list.
+		tmp = cdr(tmp);
+	}
+
+	// Call a function with the supplied arguments.
+	return apply(operator, args, result);
 }
 
 /**
@@ -535,6 +611,20 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
 	cdr(env) = cons(item, cdr(env));
 
 	return BAMBOO_OK;
+}
+
+/**
+ * Creates a new built-in function symbol inside an environment or changes it if
+ * it already exists in the specified environment.
+ *
+ * @param  env  Parent environment where the built-in function symbol resides.
+ * @param  name Name of the symbol for the built-in function.
+ * @param  func Built-in function that will be called for this symbol.
+ * @return      BAMBOO_OK if the operation was successful.
+ */
+bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
+									  builtin_func_t func) {
+	return bamboo_env_set(env, bamboo_symbol(name), bamboo_builtin(func));
 }
 
 /**
@@ -665,6 +755,64 @@ const char* bamboo_error_detail(void) {
  */
 void set_error_msg(const char *msg) {
 	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
+}
+
+bamboo_error_t builtin_car(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (nilp(args) || !nilp(cdr(args))) {
+		set_error_msg("This function expects a single argument");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Do what's appropriate for each scenario.
+	if (nilp(car(args))) {
+		// Is it just nil?
+		*result = nil;
+	} else if (car(args).type != ATOM_TYPE_PAIR) {
+		// Is it actually a pair?
+		set_error_msg("Argument must be a pair");
+		return BAMBOO_ERROR_WRONG_TYPE;
+	} else {
+		// Just get the first element of the pair.
+		*result = car(car(args));
+	}
+
+	return BAMBOO_OK;
+}
+
+bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (nilp(args) || !nilp(cdr(args))) {
+		set_error_msg("This function expects a single argument");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Do what's appropriate for each scenario.
+	if (nilp(car(args))) {
+		// Is it just nil?
+		*result = nil;
+	} else if (car(args).type != ATOM_TYPE_PAIR) {
+		// Is it actually a pair?
+		set_error_msg("Argument must be a pair");
+		return BAMBOO_ERROR_WRONG_TYPE;
+	} else {
+		// Just get the first element of the pair.
+		*result = cdr(car(args));
+	}
+
+	return BAMBOO_OK;
+}
+
+bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (nilp(args) || nilp(cdr(args)) || !nilp(cdr(cdr(args)))) {
+		set_error_msg("This function expects 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Create the pair.
+	*result = cons(car(args), car(cdr(args)));
+	return BAMBOO_OK;
 }
 
 /**

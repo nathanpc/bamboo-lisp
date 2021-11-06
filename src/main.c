@@ -15,6 +15,7 @@
 
 // Private methods.
 int readline(char *buf, size_t len);
+bamboo_error_t builtin_quit(atom_t args, atom_t *result);
 
 /**
  * Program's main entry point.
@@ -30,6 +31,9 @@ int main(void) {
 	err = bamboo_init(&env);
 	if (err)
 		return err;
+
+	// Add our own custom built-in function.
+	bamboo_env_set_builtin(env, "QUIT", builtin_quit);
 
 	// Start the REPL.
 	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
@@ -98,4 +102,44 @@ int readline(char *buf, size_t len) {
 	}
 
 	return 0;
+}
+
+/**
+ * Simple example of how to create a built-in function.
+ *
+ * (quit [retval])
+ *
+ * @param  args   List of arguments passed to the function.
+ * @param  result Return atom of calling the function.
+ * @return        BAMBOO_OK if the call was sucessful, otherwise check the
+ *                bamboo_error_t enum.
+ */
+bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
+	atom_t arg1;
+
+	// Just set the return to nil since we wont use it.
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		printf("Quitting from a custom built-in function." LINEBREAK);
+		exit(0);
+	}
+
+	// Check if we have more than a single argument.
+	if (!nilp(cdr(args)))
+		return BAMBOO_ERROR_ARGUMENTS;
+
+	// Get the first argument.
+	arg1 = car(args);
+
+	// Check if its the right type of argument.
+	if (arg1.type != ATOM_TYPE_INTEGER)
+		return BAMBOO_ERROR_WRONG_TYPE;
+
+	// Exit with the specified return value.
+	printf("Quitting from a custom built-in function with return value %d."
+		   LINEBREAK, arg1.value.integer);
+	exit(arg1.value.integer);
+	return BAMBOO_OK;
 }

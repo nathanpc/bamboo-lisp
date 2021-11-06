@@ -67,6 +67,7 @@ static const atom_t nil = { ATOM_TYPE_NIL };
 #define nilp(atom) ((atom).type == ATOM_TYPE_NIL)
 atom_t cons(atom_t _car, atom_t _cdr);
 bool listp(atom_t expr);
+bamboo_error_t apply(atom_t func, atom_t args, atom_t *result);
 
 // Initialization.
 bamboo_error_t bamboo_init(env_t *env);
@@ -75,6 +76,8 @@ bamboo_error_t bamboo_init(env_t *env);
 env_t bamboo_env_new(env_t parent);
 bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
 bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
+bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
+									  builtin_func_t func);
 
 // Primitive creation.
 atom_t bamboo_int(long num);
