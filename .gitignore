@@ -11,6 +11,9 @@
 *.obj
 *.exe
 
+# Source Insight
+*.si4project/
+
 # Misc.
 .DS_Store
 Thumbs.db
