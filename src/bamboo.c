@@ -38,6 +38,10 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
 bamboo_error_t builtin_car(atom_t args, atom_t *result);
 bamboo_error_t builtin_cdr(atom_t args, atom_t *result);
 bamboo_error_t builtin_cons(atom_t args, atom_t *result);
+bamboo_error_t builtin_sum(atom_t args, atom_t *result);
+bamboo_error_t builtin_subtract(atom_t args, atom_t *result);
+bamboo_error_t builtin_multiply(atom_t args, atom_t *result);
+bamboo_error_t builtin_divide(atom_t args, atom_t *result);
 
 /**
  * Initializes the Bamboo interpreter environment.
@@ -60,6 +64,10 @@ bamboo_error_t bamboo_init(env_t *env) {
 	bamboo_env_set_builtin(*env, "CAR", builtin_car);
 	bamboo_env_set_builtin(*env, "CDR", builtin_cdr);
 	bamboo_env_set_builtin(*env, "CONS", builtin_cons);
+	bamboo_env_set_builtin(*env, "+", builtin_sum);
+	bamboo_env_set_builtin(*env, "-", builtin_subtract);
+	bamboo_env_set_builtin(*env, "*", builtin_multiply);
+	bamboo_env_set_builtin(*env, "/", builtin_divide);
 
 	return BAMBOO_OK;
 }
@@ -251,7 +259,7 @@ atom_t shallow_copy_list(atom_t list) {
  */
 uint8_t list_count(atom_t list) {
 	uint8_t count = 0;
-	
+
 	// Iterate over the list until we reach the final nil atom.
 	while (!nilp(list)) {
 		// If every atom of a list is not a pair, then it's not a list.
@@ -332,7 +340,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	if ((start[0] >= '0') && (start[0] <= '9')) {
 		long integer;
 		double dfloat;
-		
+
 		// Try to parse an integer.
 		integer = strtol(start, &buf, 0);
 		if (buf == end) {
@@ -852,6 +860,7 @@ void set_error_msg(const char *msg) {
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
+// (car pair) -> atom
 bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 1) {
@@ -875,6 +884,7 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	return BAMBOO_OK;
 }
 
+// (cdr pair) -> atom
 bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 1) {
@@ -898,6 +908,7 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 	return BAMBOO_OK;
 }
 
+// (cons car cdr) -> pair
 bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 2) {
@@ -907,6 +918,260 @@ bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 
 	// Create the pair.
 	*result = cons(car(args), car(cdr(args)));
+	return BAMBOO_OK;
+}
+
+// (+ nums...) -> num
+bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
+	atom_t num;
+
+	// Initialize the result atom.
+	num.type = ATOM_TYPE_INTEGER;
+	num.value.integer = 0;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments summing them.
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			// Integer argument.
+			switch (num.type) {
+			case ATOM_TYPE_INTEGER:
+				num.value.integer += car(args).value.integer;
+				break;
+			case ATOM_TYPE_FLOAT:
+				num.value.dfloat += car(args).value.integer;
+				break;
+			}
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			// Float argument. Check if we should change our atom type first.
+			if (num.type == ATOM_TYPE_INTEGER) {
+				num.type = ATOM_TYPE_FLOAT;
+				num.value.dfloat = (double)num.value.integer;
+			}
+
+			// Sum it up.
+			num.value.dfloat += car(args).value.dfloat;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+		// Go to the next argument.
+		args = cdr(args);
+	}
+
+	// Return the result atom.
+	*result = num;
+	return BAMBOO_OK;
+}
+
+// (- nums...) -> num
+bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
+	atom_t num;
+	bool first = true;
+
+	// Initialize the result atom.
+	num.type = ATOM_TYPE_INTEGER;
+	num.value.integer = 0;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments subtracting them.
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			// Integer argument.
+			if (first) {
+				// First iteration, so let's assign the first value first.
+				num.value.integer = car(args).value.integer;
+				first = false;
+
+				goto next;
+			}
+
+			switch (num.type) {
+			case ATOM_TYPE_INTEGER:
+				num.value.integer -= car(args).value.integer;
+				break;
+			case ATOM_TYPE_FLOAT:
+				num.value.dfloat -= car(args).value.integer;
+				break;
+			}
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			// Float argument.
+			if (first) {
+				// First iteration, so let's assign the first value first.
+				num.value.dfloat = car(args).value.dfloat;
+				first = false;
+
+				goto next;
+			}
+
+			// Check if we should change our atom type first.
+			if (num.type == ATOM_TYPE_INTEGER) {
+				num.type = ATOM_TYPE_FLOAT;
+				num.value.dfloat = (double)num.value.integer;
+			}
+
+			// Subtract it up.
+			num.value.dfloat -= car(args).value.dfloat;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+next:
+		// Go to the next argument.
+		args = cdr(args);
+	}
+
+	// Return the result atom.
+	*result = num;
+	return BAMBOO_OK;
+}
+
+// (* nums...) -> num
+bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
+	atom_t num;
+	bool first = true;
+
+	// Initialize the result atom.
+	num.type = ATOM_TYPE_INTEGER;
+	num.value.integer = 0;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments multiplying them.
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			// Integer argument.
+			if (first) {
+				// First iteration, so let's assign the first value first.
+				num.value.integer = car(args).value.integer;
+				first = false;
+
+				goto next;
+			}
+
+			switch (num.type) {
+			case ATOM_TYPE_INTEGER:
+				num.value.integer *= car(args).value.integer;
+				break;
+			case ATOM_TYPE_FLOAT:
+				num.value.dfloat *= car(args).value.integer;
+				break;
+			}
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			// Float argument.
+			if (first) {
+				// First iteration, so let's assign the first value first.
+				num.value.dfloat = car(args).value.dfloat;
+				first = false;
+
+				goto next;
+			}
+
+			// Check if we should change our atom type first.
+			if (num.type == ATOM_TYPE_INTEGER) {
+				num.type = ATOM_TYPE_FLOAT;
+				num.value.dfloat = (double)num.value.integer;
+			}
+
+			// Multiply it up.
+			num.value.dfloat *= car(args).value.dfloat;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+next:
+		// Go to the next argument.
+		args = cdr(args);
+	}
+
+	// Return the result atom.
+	*result = num;
+	return BAMBOO_OK;
+}
+
+// (/ nums...) -> num
+bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
+	atom_t num;
+	bool first = true;
+
+	// Initialize the result atom.
+	num.type = ATOM_TYPE_FLOAT;
+	num.value.dfloat = (double)0;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments dividing them.
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			// Integer argument.
+			if (first) {
+				// First iteration, so let's assign the first value first.
+				num.value.dfloat = (double)car(args).value.integer;
+				first = false;
+
+				goto next;
+			}
+
+			num.value.dfloat /= (double)car(args).value.integer;
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			// Float argument.
+			if (first) {
+				// First iteration, so let's assign the first value first.
+				num.value.dfloat = car(args).value.dfloat;
+				first = false;
+
+				goto next;
+			}
+
+			// Check if we should change our atom type first.
+			if (num.type == ATOM_TYPE_INTEGER) {
+				num.type = ATOM_TYPE_FLOAT;
+				num.value.dfloat = (double)num.value.integer;
+			}
+
+			// Divide it up.
+			num.value.dfloat /= car(args).value.dfloat;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+next:
+		// Go to the next argument.
+		args = cdr(args);
+	}
+
+	// Return the result atom.
+	*result = num;
 	return BAMBOO_OK;
 }
 
