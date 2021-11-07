@@ -10,6 +10,7 @@
 # Object and executable files.
 *.obj
 *.exe
+build/
 
 # Source Insight
 *.si4project/

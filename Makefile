@@ -17,7 +17,7 @@ BIN  = $(BUILDDIR)/$(PROJECT).exe
 CC = wcc386
 LD = wlink
 RM = del /F /Q
-RMDIR = rmdir /Q
+RMDIR = rmdir
 
 # Flags
 CFLAGS = -w4 -e25 -zq -od -d2 -6r -bt=$(PLATFORM) -mf
