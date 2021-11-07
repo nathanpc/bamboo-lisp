@@ -155,6 +155,43 @@ atom_t bamboo_builtin(builtin_func_t func) {
 	return atom;
 }
 
+/**
+ * Builds an closure (procedure) atom.
+ *
+ * @param  env    Environment for this closure.
+ * @param  args   Arguments for the closure.
+ * @param  body   Body of the closure.
+ * @param  result Pointer to store the resulting atom.
+ * @return        BAMBOO_OK if the atom creation was successful.
+ */
+bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
+		atom_t *result) {
+	atom_t tmp;
+
+	// Check if both arguments and body are lists.
+	if (!listp(args) || !listp(body)) {
+		set_error_msg("Arguments and closure body must be lists");
+		return BAMBOO_ERROR_SYNTAX;
+	}
+
+	// Check if all argument names are symbols.
+	tmp = args;
+	while (!nilp(tmp)) {
+		if (car(tmp).type != ATOM_TYPE_SYMBOL) {
+			set_error_msg("All arguments must be symbols");
+			return BAMBOO_ERROR_SYNTAX;
+		}
+
+		tmp = cdr(tmp);
+	}
+
+	// Make the closure atom.
+	*result = cons(env, cons(args, body));
+	result->type = ATOM_TYPE_CLOSURE;
+
+	return BAMBOO_OK;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //                           List Atom Manipulation                           //
@@ -204,7 +241,8 @@ bool listp(atom_t expr) {
 }
 
 /**
- * Calls a built-in function with the supplied arguments and get the result.
+ * Calls a built-in function or a closure with the supplied arguments and get
+ * the result.
  *
  * @param  func   Built-in function atom.
  * @param  args   Arguments to be passed to the function.
@@ -212,14 +250,57 @@ bool listp(atom_t expr) {
  * @return        BAMBOO_OK if the function call was successful.
  */
 bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
-	// Check if we actually have a built-in function.
-	if (func.type != ATOM_TYPE_BUILTIN) {
-		set_error_msg("Atom should be of type builtin");
+	env_t env;
+	atom_t arg_names;
+	atom_t body;
+	
+	// Check if we have a valid type.
+	if (func.type == ATOM_TYPE_BUILTIN) {
+		// Call the built-in function.
+		return (*func.value.builtin)(args, result);
+	} else if (func.type != ATOM_TYPE_CLOSURE) {
+		set_error_msg("Function atom must be of type built-in or closure");
 		return BAMBOO_ERROR_WRONG_TYPE;
 	}
 
-	// Call the built-in function.
-	return (*func.value.builtin)(args, result);
+	// Create a local environment for the closure and get its different parts.
+	env = bamboo_env_new(car(func));
+	arg_names = car(cdr(func));
+	body = cdr(cdr(func));
+
+	// Bind the local environment argument values.
+	while (!nilp(arg_names)) {
+		// Check if the argument value list ends prematurely.
+		if (nilp(args)) {
+			set_error_msg("Argument value list ended prematurely");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+		// Assign the value to the argument.
+		bamboo_env_set(env, car(arg_names), car(args));
+
+		// Go to the next argument.
+		arg_names = cdr(arg_names);
+		args = cdr(args);
+	}
+
+	// Check if we still have argument values that weren't assigned.
+	if (!nilp(args)) {
+		set_error_msg("Too many argument values passed to the closure");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Evaluate the body of the closure with our local environment.
+	while (!nilp(body)) {
+		bamboo_error_t err = bamboo_eval_expr(car(body), env, result);
+		if (err)
+			return err;
+
+		// Go to the next element of the body.
+		body = cdr(body);
+	}
+
+	return BAMBOO_OK;
 }
 
 /**
@@ -574,6 +655,15 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Put the symbol in th environment.
 			*result = symbol;
 			return bamboo_env_set(env, symbol, value);
+		}else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
+			// Check if we have both of the required 2 arguments.
+			if (list_count(args) != 2) {
+				set_error_msg("Wrong number of arguments. Expected 2");
+				return BAMBOO_ERROR_ARGUMENTS;
+			}
+
+			// Make the closure.
+			return bamboo_closure(env, car(args), cdr(args), result);
 		}
 	}
 
@@ -758,6 +848,13 @@ void bamboo_print_expr(atom_t atom) {
         break;
 	case ATOM_TYPE_BUILTIN:
 		printf("#<BUILTIN:%p>", atom.value.builtin);
+		break;
+	case ATOM_TYPE_CLOSURE:
+		putstr("#<FUNCTION:");
+		bamboo_print_expr(car(cdr(atom)));
+		putstr(" ");
+		bamboo_print_expr(cdr(cdr(atom)));
+		putstr(">");
 		break;
 	default:
 		putstr("Don't know how to show this");

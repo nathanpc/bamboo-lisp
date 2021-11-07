@@ -32,7 +32,8 @@ typedef enum {
 	ATOM_TYPE_SYMBOL,
 	ATOM_TYPE_INTEGER,
 	ATOM_TYPE_FLOAT,
-	ATOM_TYPE_BUILTIN
+	ATOM_TYPE_BUILTIN,
+	ATOM_TYPE_CLOSURE
 } atom_type_t;
 
 // Atom structures typedefs.
@@ -86,6 +87,9 @@ atom_t bamboo_int(long num);
 atom_t bamboo_float(double num);
 atom_t bamboo_symbol(const char *name);
 atom_t bamboo_builtin(builtin_func_t func);
+bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
+		atom_t *result);
+
 
 // Parsing and evaluation.
 bamboo_error_t parse_expr(const char *input, const char **end,
