@@ -140,6 +140,22 @@ atom_t bamboo_symbol(const char *name) {
 }
 
 /**
+ * Build an boolean atom.
+ *
+ * @param  value Boolean value for the atom.
+ * @return       Boolean atom.
+ */
+atom_t bamboo_boolean(bool value) {
+	atom_t atom;
+
+	// Create the boolean atom.
+	atom.type = ATOM_TYPE_BOOLEAN;
+	atom.value.boolean = value;
+
+	return atom;
+}
+
+/**
  * Builds an built-in function atom.
  *
  * @param  func Built-in C function.
@@ -417,6 +433,31 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	const char *start = token->start;
 	const char *end = token->end;
 
+	// Check if we are dealing with a special representation of some kind.
+	if (start[0] == '#') {
+		// Check if we don't have an invalid syntax.
+		if ((start + 1) == end) {
+			set_error_msg("Special values must have at least one character "
+				"after the # character");
+			return BAMBOO_ERROR_SYNTAX;
+		}
+
+		// Check which kind of special value we are dealing with.
+		switch (start[1]) {
+		case 'F':
+		case 'f':
+			*atom = bamboo_boolean(false);
+			return BAMBOO_OK;
+		case 'T':
+		case 't':
+			*atom = bamboo_boolean(true);
+			return BAMBOO_OK;
+		default:
+			set_error_msg("Invalid type of special value");
+			return BAMBOO_ERROR_SYNTAX;
+		}
+	}
+
 	// Check if we are dealing with a number of some kind.
 	if ((start[0] >= '0') && (start[0] <= '9')) {
 		long integer;
@@ -630,6 +671,32 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Return the arguments without evaluating.
 			*result = car(args);
 			return BAMBOO_OK;
+		} else if (strcmp(operator.value.symbol, "IF") == 0) {
+			atom_t cond;
+			atom_t path;
+
+			// Check if we have the right number of arguments.
+			if (list_count(args) != 3) {
+				set_error_msg("Wrong number of arguments. Expected 3");
+				return BAMBOO_ERROR_ARGUMENTS;
+			}
+
+			// Evaluate the condition.
+			err = bamboo_eval_expr(car(args), env, &cond);
+			if (err)
+				return err;
+
+			// Check if we have a false boolean.
+			if ((cond.type == ATOM_TYPE_BOOLEAN) && (!cond.value.boolean)) {
+				// False
+				path = car(cdr(cdr(args)));
+			} else {
+				// True
+				path = car(cdr(args));
+			}
+
+			// Evaluate only the correct path.
+			return bamboo_eval_expr(path, env, result);
 		} else if (strcmp(operator.value.symbol, "DEFINE") == 0) {
 			atom_t symbol;
 			atom_t value;
@@ -655,7 +722,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Put the symbol in th environment.
 			*result = symbol;
 			return bamboo_env_set(env, symbol, value);
-		}else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
+		} else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
 			// Check if we have both of the required 2 arguments.
 			if (list_count(args) != 2) {
 				set_error_msg("Wrong number of arguments. Expected 2");
@@ -824,6 +891,9 @@ void bamboo_print_expr(atom_t atom) {
     case ATOM_TYPE_FLOAT:
         printf("%g", atom.value.dfloat);
         break;
+	case ATOM_TYPE_BOOLEAN:
+		printf("#%c", (atom.value.boolean) ? 't' : 'f');
+		break;
     case ATOM_TYPE_PAIR:
         putchar('(');
         bamboo_print_expr(car(atom));
