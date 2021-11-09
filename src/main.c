@@ -40,10 +40,19 @@ int main(void) {
 	while (!readline(input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
+		const char *end;
 
 		// Parse the user's input.
-		err = parse_expr(input, &input, &parsed);
+		err = parse_expr(input, &end, &parsed);
 		if (err) {
+			uint8_t spaces;
+			
+			// Show where the user was wrong.
+			printf(input);
+			printf(LINEBREAK);
+			for (spaces = 0; spaces < (end - input); spaces++)
+				putchar(' ');
+			printf("^ ");
 			bamboo_print_error(err);
 			printf(LINEBREAK);
 
