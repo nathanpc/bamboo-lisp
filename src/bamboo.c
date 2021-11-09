@@ -459,7 +459,7 @@ bamboo_error_t lex(const char *str, token_t *token) {
     const char *tmp = str;
     const char *wspace = " \t\r\n";
     const char *delim = "() \t\n";
-    const char *prefix = "()";
+    const char *prefix = "()\'";
 
     // Skip any leading whitespace.
     tmp += strspn(tmp, wspace);
@@ -509,6 +509,9 @@ bamboo_error_t parse_expr(const char *input, const char **end,
 		return parse_list(token.end, end, atom);
 	case ')':
 		return BAMBOO_PAREN_END;
+	case '\'':
+		*atom = cons(bamboo_symbol("QUOTE"), cons(nil, nil));
+		return parse_expr(token.end, end, &car(cdr(*atom)));
 	default:
 		return parse_primitive(&token, atom);
 	}
