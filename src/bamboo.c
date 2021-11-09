@@ -27,6 +27,7 @@ static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 
 // Private methods.
 void putstr(const char *str);
+bool atom_boolean_val(atom_t atom);
 void set_error_msg(const char *msg);
 uint8_t list_count(atom_t list);
 atom_t shallow_copy_list(atom_t list);
@@ -42,6 +43,16 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result);
 bamboo_error_t builtin_subtract(atom_t args, atom_t *result);
 bamboo_error_t builtin_multiply(atom_t args, atom_t *result);
 bamboo_error_t builtin_divide(atom_t args, atom_t *result);
+bamboo_error_t builtin_not(atom_t args, atom_t *result);
+bamboo_error_t builtin_and(atom_t args, atom_t *result);
+bamboo_error_t builtin_or(atom_t args, atom_t *result);
+bamboo_error_t builtin_numeq(atom_t args, atom_t *result);
+bamboo_error_t builtin_lt(atom_t args, atom_t *result);
+bamboo_error_t builtin_gt(atom_t args, atom_t *result);
+
+// Initialization functions.
+bamboo_error_t populate_builtins(env_t *env);
+
 
 /**
  * Initializes the Bamboo interpreter environment.
@@ -50,6 +61,8 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result);
  * @return     BAMBOO_OK if everything went fine.
  */
 bamboo_error_t bamboo_init(env_t *env) {
+	bamboo_error_t err;
+	
 	// Display a pretty welcome message.
 	printf("Bamboo Lisp v0.1a" LINEBREAK LINEBREAK);
 
@@ -61,13 +74,68 @@ bamboo_error_t bamboo_init(env_t *env) {
 	*env = bamboo_env_new(nil);
 
 	// Populate the environment with our built-in functions.
-	bamboo_env_set_builtin(*env, "CAR", builtin_car);
-	bamboo_env_set_builtin(*env, "CDR", builtin_cdr);
-	bamboo_env_set_builtin(*env, "CONS", builtin_cons);
-	bamboo_env_set_builtin(*env, "+", builtin_sum);
-	bamboo_env_set_builtin(*env, "-", builtin_subtract);
-	bamboo_env_set_builtin(*env, "*", builtin_multiply);
-	bamboo_env_set_builtin(*env, "/", builtin_divide);
+	err = populate_builtins(env);
+	if (err)
+		return err;
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Populates the environment with our built-in functions.
+ *
+ * @param  env Pointer to the environment to be populated.
+ * @return     BAMBOO_OK if the population was successful.
+ */
+bamboo_error_t populate_builtins(env_t *env) {
+	bamboo_error_t err;
+
+	// Basic pair operations.
+	err = bamboo_env_set_builtin(*env, "CAR", builtin_car);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "CDR", builtin_cdr);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "CONS", builtin_cons);
+	if (err)
+		return err;
+
+	// Arithmetic operations.
+	err = bamboo_env_set_builtin(*env, "+", builtin_sum);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "-", builtin_subtract);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "*", builtin_multiply);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "/", builtin_divide);
+	if (err)
+		return err;
+
+	// Boolean operations.
+	err = bamboo_env_set_builtin(*env, "NOT", builtin_not);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "AND", builtin_and);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "OR", builtin_or);
+	if (err)
+		return err;
+
+	// Predicates for numbers.
+	err = bamboo_env_set_builtin(*env, "=", builtin_numeq);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "<", builtin_lt);
+	if (err)
+		return err;
+	err = bamboo_env_set_builtin(*env, ">", builtin_gt);
+	if (err)
+		return err;
 
 	return BAMBOO_OK;
 }
@@ -1342,11 +1410,275 @@ next:
 	return BAMBOO_OK;
 }
 
+// (not bool) -> bool
+bamboo_error_t builtin_not(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		set_error_msg("This function expects exactly 1 argument");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Populate the result atom.
+	result->type = ATOM_TYPE_BOOLEAN;
+	result->value.boolean = !atom_boolean_val(car(args));
+	
+	return BAMBOO_OK;
+}
+
+// (and bool...) -> bool
+bamboo_error_t builtin_and(atom_t args, atom_t *result) {
+	atom_t prev_atom;
+	
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments checking them.
+	prev_atom = car(args);
+	args = cdr(args);
+	while (!nilp(args)) {
+		// We only need a single false value.
+		if (atom_boolean_val(prev_atom) != atom_boolean_val(car(args))) {
+			*result = bamboo_boolean(false);
+			return BAMBOO_OK;
+		}
+		
+		// Go to the next argument.
+		prev_atom = car(args);
+		args = cdr(args);
+	}
+
+	// Looks like they were all true all along.
+	*result = bamboo_boolean(true);
+	return BAMBOO_OK;
+}
+
+// (or bool...) -> bool
+bamboo_error_t builtin_or(atom_t args, atom_t *result) {
+	atom_t prev_atom;
+	
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments checking them.
+	prev_atom = car(args);
+	args = cdr(args);
+	while (!nilp(args)) {
+		// We only need a single true value.
+		if (atom_boolean_val(prev_atom) || atom_boolean_val(car(args))) {
+			*result = bamboo_boolean(true);
+			return BAMBOO_OK;
+		}
+		
+		// Go to the next argument.
+		prev_atom = car(args);
+		args = cdr(args);
+	}
+
+	// Looks like they were all false all along.
+	*result = bamboo_boolean(false);
+	return BAMBOO_OK;
+}
+
+// (= nums...) -> bool
+bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
+	atom_t prev_num;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments checking them.
+	prev_num = car(args);
+	args = cdr(args);
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			if (prev_num.type == ATOM_TYPE_INTEGER) {
+				// int == int.
+				if (prev_num.value.integer == car(args).value.integer)
+					goto next;
+			} else {
+				// float == int.
+				if (prev_num.value.dfloat == (double)car(args).value.integer)
+					goto next;
+			}
+			
+			*result = bamboo_boolean(false);
+			return BAMBOO_OK;
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			if (prev_num.type == ATOM_TYPE_INTEGER) {
+				// float == int.
+				if ((double)prev_num.value.integer == car(args).value.dfloat)
+					goto next;
+			} else {
+				// float == float.
+				if (prev_num.value.dfloat == car(args).value.dfloat)
+					goto next;
+			}
+
+			*result = bamboo_boolean(false);
+				return BAMBOO_OK;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+next:
+		// Go to the next argument.
+		prev_num = car(args);
+		args = cdr(args);
+	}
+
+	// Looks like they were all equal all along.
+	*result = bamboo_boolean(true);
+	return BAMBOO_OK;
+}
+
+// (< nums...) -> bool
+bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
+	atom_t prev_num;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments checking them.
+	prev_num = car(args);
+	args = cdr(args);
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			if (prev_num.type == ATOM_TYPE_INTEGER) {
+				// int == int.
+				if (prev_num.value.integer < car(args).value.integer)
+					goto next;
+			} else {
+				// float == int.
+				if (prev_num.value.dfloat < (double)car(args).value.integer)
+					goto next;
+			}
+			
+			*result = bamboo_boolean(false);
+			return BAMBOO_OK;
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			if (prev_num.type == ATOM_TYPE_INTEGER) {
+				// float == int.
+				if ((double)prev_num.value.integer < car(args).value.dfloat)
+					goto next;
+			} else {
+				// float == float.
+				if (prev_num.value.dfloat < car(args).value.dfloat)
+					goto next;
+			}
+
+			*result = bamboo_boolean(false);
+				return BAMBOO_OK;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+next:
+		// Go to the next argument.
+		prev_num = car(args);
+		args = cdr(args);
+	}
+
+	// Looks like they were all equal all along.
+	*result = bamboo_boolean(true);
+	return BAMBOO_OK;
+}
+
+// (> nums...) -> bool
+bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
+	atom_t prev_num;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 2) {
+		set_error_msg("This function expects at least 2 arguments");
+		return BAMBOO_ERROR_ARGUMENTS;
+	}
+
+	// Iterate through the arguments checking them.
+	prev_num = car(args);
+	args = cdr(args);
+	while (!nilp(args)) {
+		if (car(args).type == ATOM_TYPE_INTEGER) {
+			if (prev_num.type == ATOM_TYPE_INTEGER) {
+				// int == int.
+				if (prev_num.value.integer > car(args).value.integer)
+					goto next;
+			} else {
+				// float == int.
+				if (prev_num.value.dfloat > (double)car(args).value.integer)
+					goto next;
+			}
+			
+			*result = bamboo_boolean(false);
+			return BAMBOO_OK;
+		} else if (car(args).type == ATOM_TYPE_FLOAT) {
+			if (prev_num.type == ATOM_TYPE_INTEGER) {
+				// float == int.
+				if ((double)prev_num.value.integer > car(args).value.dfloat)
+					goto next;
+			} else {
+				// float == float.
+				if (prev_num.value.dfloat > car(args).value.dfloat)
+					goto next;
+			}
+
+			*result = bamboo_boolean(false);
+				return BAMBOO_OK;
+		} else {
+			// Non-numeric argument.
+			set_error_msg("Invalid type of argument. This function only "
+						  "accepts numerics");
+			return BAMBOO_ERROR_WRONG_TYPE;
+		}
+
+next:
+		// Go to the next argument.
+		prev_num = car(args);
+		args = cdr(args);
+	}
+
+	// Looks like they were all equal all along.
+	*result = bamboo_boolean(true);
+	return BAMBOO_OK;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //                          Miscellaneous Utilities                           //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Gets the boolean value of a given atom.
+ *
+ * @param  atom Atom to get its boolean value.
+ * @return      TRUE if the atom is of type boolean and is true, or if its any
+ *              other type of atom. FALSE only for a false boolean atom.
+ */
+bool atom_boolean_val(atom_t atom) {
+	// All non-boolean atoms are true.
+	if (atom.type != ATOM_TYPE_BOOLEAN)
+		return true;
+
+	return atom.value.boolean;
+}
 
 /**
  * Prints a string to stdout. Just like puts but without the newline.
