@@ -32,6 +32,7 @@ void set_error_msg(const char *msg);
 uint8_t list_count(atom_t list);
 atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const char *str, token_t *token);
+bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
 bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
 
@@ -487,6 +488,35 @@ bamboo_error_t lex(const char *str, token_t *token) {
 }
 
 /**
+ * Parses an generic expression.
+ *
+ * @param  input Expression as a string.
+ * @param  end   Pointer that will hold the point where the parsing stopped.
+ * @param  atom  Pointer to the atom object generated from the expression.
+ * @return       BAMBOO_OK if the parsing was successful.
+ */
+bamboo_error_t parse_expr(const char *input, const char **end,
+						  atom_t *atom) {
+	token_t token;
+	bamboo_error_t err;
+
+	err = lex(input, &token);
+	if (err)
+		return err;
+
+	switch (token.start[0]) {
+	case '(':
+		return parse_list(token.end, end, atom);
+	case ')':
+		return BAMBOO_PAREN_END;
+	default:
+		return parse_primitive(&token, atom);
+	}
+
+	return BAMBOO_ERROR_UNKNOWN;
+}
+
+/**
  * Parses primitives from a given token.
  *
  * @param  token Pointer to token structure that holds the beginning and the end
@@ -501,30 +531,9 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	const char *start = token->start;
 	const char *end = token->end;
 
-	// Check if we are dealing with a special representation of some kind.
-	if (start[0] == '#') {
-		// Check if we don't have an invalid syntax.
-		if ((start + 1) == end) {
-			set_error_msg("Special values must have at least one character "
-				"after the # character");
-			return BAMBOO_ERROR_SYNTAX;
-		}
-
-		// Check which kind of special value we are dealing with.
-		switch (start[1]) {
-		case 'F':
-		case 'f':
-			*atom = bamboo_boolean(false);
-			return BAMBOO_OK;
-		case 'T':
-		case 't':
-			*atom = bamboo_boolean(true);
-			return BAMBOO_OK;
-		default:
-			set_error_msg("Invalid type of special value");
-			return BAMBOO_ERROR_SYNTAX;
-		}
-	}
+	// Check if we are dealing with a hash expression.
+	if (start[0] == '#')
+		return parse_hash_expr(token, atom);
 
 	// Check if we are dealing with a number of some kind.
 	if ((start[0] >= '0') && (start[0] <= '9')) {
@@ -569,6 +578,38 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	// Clean up and return OK.
 	free(buf);
 	return BAMBOO_OK;
+}
+
+/**
+ * Parses primitives that begin with the special hash (#) notation.
+ *
+ * @param  token Pointer to token structure that holds the beginning and the end
+ *               of a token string.
+ * @param  atom  Pointer to an atom structure that will hold the parsed atom.
+ * @return       BAMBOO_OK if we were able to parse the token correctly.
+ */
+bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
+	// Check if we don't have an invalid syntax.
+	if ((token->start + 1) == token->end) {
+		set_error_msg("Special values must have at least one character "
+			"after the # character");
+		return BAMBOO_ERROR_SYNTAX;
+	}
+
+	// Check which kind of special value we are dealing with.
+	switch (token->start[1]) {
+	case 'F':
+	case 'f':
+		*atom = bamboo_boolean(false);
+		return BAMBOO_OK;
+	case 'T':
+	case 't':
+		*atom = bamboo_boolean(true);
+		return BAMBOO_OK;
+	default:
+		set_error_msg("Invalid type of hash expression");
+		return BAMBOO_ERROR_SYNTAX;
+	}
 }
 
 /**
@@ -658,35 +699,6 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 	}
 
 	return BAMBOO_OK;
-}
-
-/**
- * Parses an generic expression.
- *
- * @param  input Expression as a string.
- * @param  end   Pointer that will hold the point where the parsing stopped.
- * @param  atom  Pointer to the atom object generated from the expression.
- * @return       BAMBOO_OK if the parsing was successful.
- */
-bamboo_error_t parse_expr(const char *input, const char **end,
-						  atom_t *atom) {
-	token_t token;
-	bamboo_error_t err;
-
-	err = lex(input, &token);
-	if (err)
-		return err;
-
-	switch (token.start[0]) {
-	case '(':
-		return parse_list(token.end, end, atom);
-	case ')':
-		return BAMBOO_PAREN_END;
-	default:
-		return parse_primitive(&token, atom);
-	}
-
-	return BAMBOO_ERROR_UNKNOWN;
 }
 
 /**
