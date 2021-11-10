@@ -790,17 +790,31 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 				return BAMBOO_ERROR_ARGUMENTS;
 			}
 
-			// Get symbol.
+			// Get the reference symbol.
 			symbol = car(args);
-			if (symbol.type != ATOM_TYPE_SYMBOL) {
-				set_error_msg("Argument 0 should be of type symbol");
+			switch (symbol.type) {
+			case ATOM_TYPE_SYMBOL:
+				// Evaluate value before assigning it to the symbol.
+				err = bamboo_eval_expr(car(cdr(args)), env, &value);
+				if (err)
+					return err;
+				break;
+			case ATOM_TYPE_PAIR:
+				// Build a closure. We are using the define lambda shorthand.
+				err = bamboo_closure(env, cdr(symbol), cdr(args), &value);
+				symbol = car(symbol);
+
+				// Check if we actually have a symbol for the closure name.
+				if (symbol.type != ATOM_TYPE_SYMBOL) {
+					set_error_msg("First element of argument 0 list should be "
+						"a symbol");
+					return BAMBOO_ERROR_WRONG_TYPE;
+				}
+				break;
+			default:
+				set_error_msg("Argument 0 should be of type symbol or pair");
 				return BAMBOO_ERROR_WRONG_TYPE;
 			}
-
-			// Evaluate value before assigning it to the symbol.
-			err = bamboo_eval_expr(car(cdr(args)), env, &value);
-			if (err)
-				return err;
 
 			// Put the symbol in th environment.
 			*result = symbol;
