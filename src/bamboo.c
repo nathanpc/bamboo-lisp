@@ -14,13 +14,14 @@
 // Convinience macros.
 #define IF_ERROR(err)        if ((err) > BAMBOO_OK)
 #define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
+#ifdef _MSC_VER
+// Make Microsoft's compiler happy about our use of strdup.
+#define strdup _strdup
+#endif
 
 // Private definitions.
 #define SYMBOL_NIL_STR    "NIL"
 #define ERROR_MSG_STR_LEN 100
-#ifdef _MSC_VER
-#define strdup _strdup
-#endif
 
 // Token structure.
 typedef struct {
