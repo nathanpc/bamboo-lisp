@@ -42,8 +42,11 @@ int main(void) {
 		atom_t result;
 		const char *end;
 
+		bamboo_print_tokens(input);
+		printf(LINEBREAK);
+
 		// Parse the user's input.
-		err = parse_expr(input, &end, &parsed);
+		err = bamboo_parse_expr(input, &end, &parsed);
 		if (err) {
 			uint8_t spaces;
 			

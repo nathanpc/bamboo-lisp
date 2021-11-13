@@ -510,7 +510,7 @@ bamboo_error_t lex(const char *str, token_t *token) {
  * @param  atom  Pointer to the atom object generated from the expression.
  * @return       BAMBOO_OK if the parsing was successful.
  */
-bamboo_error_t parse_expr(const char *input, const char **end,
+bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 						  atom_t *atom) {
 	token_t token;
 	bamboo_error_t err;
@@ -526,7 +526,11 @@ bamboo_error_t parse_expr(const char *input, const char **end,
 		return BAMBOO_PAREN_END;
 	case '\'':
 		*atom = cons(bamboo_symbol("QUOTE"), cons(nil, nil));
-		return parse_expr(token.end, end, &car(cdr(*atom)));
+		err = bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
+		if (err)
+			return err;
+
+		return BAMBOO_QUOTE_END;
 	default:
 		return parse_primitive(&token, atom);
 	}
@@ -677,17 +681,27 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 		}
 
 		// Parse the next token of list.
-		err = parse_expr(token.start, &(token.end), &tmp_atom);
+		err = bamboo_parse_expr(token.start, &(token.end), &tmp_atom);
 		if (err) {
-			// Move the end of the token in the last stack.
-			*end = token.end;
-
-			// Have we just reached the end of a list?
-			if (err == BAMBOO_PAREN_END)
+			// Check if we errored out or just a special condition.
+			if (err == BAMBOO_PAREN_END) {
+				// We've reached the end of a list. Move the end of the token
+				// in the last stack and return OK.
+				*end = token.end;
 				return BAMBOO_OK;
+			} else if (err == BAMBOO_QUOTE_END) {
+				// We've just ended dealing with a quote shorthand. Let's ignore
+				// the next token since it has already been dealt with.
+				err = lex(token.end, &token);
+				if (err)
+					return err;
 
-			// Looks like we've errored out.
-			return err;
+				// Move the end of the token in the last stack.
+				*end = token.end;
+			} else {
+				// Looks like we've errored out.
+				return err;
+			}
 		}
 
 		// Concatenate the atom to the list.

@@ -18,6 +18,7 @@
 typedef enum {
 	BAMBOO_OK = 0,
 	BAMBOO_PAREN_END,
+	BAMBOO_QUOTE_END,
 	BAMBOO_ERROR_SYNTAX,
 	BAMBOO_ERROR_UNBOUND,
 	BAMBOO_ERROR_ARGUMENTS,
@@ -96,7 +97,7 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 
 
 // Parsing and evaluation.
-bamboo_error_t parse_expr(const char *input, const char **end,
+bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 						  atom_t *atom);
 bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 
