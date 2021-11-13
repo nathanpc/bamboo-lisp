@@ -11,9 +11,16 @@
 #include <string.h>
 #include <ctype.h>
 
+// Convinience macros.
+#define IF_ERROR(err)        if ((err) > BAMBOO_OK)
+#define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
+
 // Private definitions.
 #define SYMBOL_NIL_STR    "NIL"
 #define ERROR_MSG_STR_LEN 100
+#ifdef _MSC_VER
+#define strdup _strdup
+#endif
 
 // Token structure.
 typedef struct {
@@ -76,7 +83,7 @@ bamboo_error_t bamboo_init(env_t *env) {
 
 	// Populate the environment with our built-in functions.
 	err = populate_builtins(env);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	return BAMBOO_OK;
@@ -93,49 +100,49 @@ bamboo_error_t populate_builtins(env_t *env) {
 
 	// Basic pair operations.
 	err = bamboo_env_set_builtin(*env, "CAR", builtin_car);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "CDR", builtin_cdr);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "CONS", builtin_cons);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	// Arithmetic operations.
 	err = bamboo_env_set_builtin(*env, "+", builtin_sum);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "-", builtin_subtract);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "*", builtin_multiply);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "/", builtin_divide);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	// Boolean operations.
 	err = bamboo_env_set_builtin(*env, "NOT", builtin_not);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "AND", builtin_and);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "OR", builtin_or);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	// Predicates for numbers.
 	err = bamboo_env_set_builtin(*env, "=", builtin_numeq);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "<", builtin_lt);
-	if (err)
+	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, ">", builtin_gt);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	return BAMBOO_OK;
@@ -393,7 +400,7 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 	// Evaluate the body of the closure with our local environment.
 	while (!nilp(body)) {
 		bamboo_error_t err = bamboo_eval_expr(car(body), env, result);
-		if (err)
+		IF_ERROR(err)
 			return err;
 
 		// Go to the next element of the body.
@@ -516,7 +523,7 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 	bamboo_error_t err;
 
 	err = lex(input, &token);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	switch (token.start[0]) {
@@ -527,7 +534,7 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 	case '\'':
 		*atom = cons(bamboo_symbol("QUOTE"), cons(nil, nil));
 		err = bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
-		if (err)
+		IF_ERROR(err)
 			return err;
 
 		return BAMBOO_QUOTE_END;
@@ -682,8 +689,8 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 
 		// Parse the next token of list.
 		err = bamboo_parse_expr(token.start, &(token.end), &tmp_atom);
-		if (err) {
-			// Check if we errored out or just a special condition.
+		IF_SPECIAL_COND(err) {
+			// We are dealing with a special condition.
 			if (err == BAMBOO_PAREN_END) {
 				// We've reached the end of a list. Move the end of the token
 				// in the last stack and return OK.
@@ -693,15 +700,20 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 				// We've just ended dealing with a quote shorthand. Let's ignore
 				// the next token since it has already been dealt with.
 				err = lex(token.end, &token);
-				if (err)
+				IF_ERROR(err)
 					return err;
 
 				// Move the end of the token in the last stack.
 				*end = token.end;
+				err = BAMBOO_OK;
 			} else {
-				// Looks like we've errored out.
+				// We haven't implemented this new special condition apparently.
+				set_error_msg("Unknown special condition");
 				return err;
 			}
+		} else if (err) {
+			// Looks like we've errored out.
+			return err;
 		}
 
 		// Concatenate the atom to the list.
@@ -795,7 +807,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 			// Evaluate the condition.
 			err = bamboo_eval_expr(car(args), env, &cond);
-			if (err)
+			IF_ERROR(err)
 				return err;
 
 			// Check if we have a false boolean.
@@ -825,7 +837,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			case ATOM_TYPE_SYMBOL:
 				// Evaluate value before assigning it to the symbol.
 				err = bamboo_eval_expr(car(cdr(args)), env, &value);
-				if (err)
+				IF_ERROR(err)
 					return err;
 				break;
 			case ATOM_TYPE_PAIR:
@@ -883,7 +895,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 			// Make the macro.
 			err = bamboo_closure(env, cdr(car(args)), cdr(args), &macro);
-			if (err)
+			IF_ERROR(err)
 				return err;
 			macro.type = ATOM_TYPE_MACRO;
 
@@ -895,7 +907,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 	// Evaluate operator.
 	err = bamboo_eval_expr(operator, env, &operator);
-	if (err)
+	IF_ERROR(err)
 		return err;
 
 	// Check if we have a macro to evaluate.
@@ -905,7 +917,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 		// Expand the macro.
 		operator.type = ATOM_TYPE_CLOSURE;
 		err = apply(operator, args, &expansion);
-		if (err)
+		IF_ERROR(err)
 			return err;
 
 		// Evaluate the expanded macro.
@@ -919,7 +931,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 	tmp = args;
 	while (!nilp(tmp)) {
 		err = bamboo_eval_expr(car(tmp), env, &car(tmp));
-		if (err)
+		IF_ERROR(err)
 			return err;
 
 		// Go to the next element in the list.

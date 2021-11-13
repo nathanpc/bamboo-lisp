@@ -42,12 +42,9 @@ int main(void) {
 		atom_t result;
 		const char *end;
 
-		bamboo_print_tokens(input);
-		printf(LINEBREAK);
-
 		// Parse the user's input.
 		err = bamboo_parse_expr(input, &end, &parsed);
-		if (err) {
+		if (err > BAMBOO_OK) {
 			uint8_t spaces;
 			
 			// Show where the user was wrong.
@@ -64,7 +61,7 @@ int main(void) {
 
 		// Evaluate the parsed expression.
 		err = bamboo_eval_expr(parsed, env, &result);
-		if (err) {
+		if (err > BAMBOO_OK) {
 			bamboo_print_error(err);
 			printf(LINEBREAK);
 
