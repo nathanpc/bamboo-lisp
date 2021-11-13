@@ -843,6 +843,39 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 			// Make the closure.
 			return bamboo_closure(env, car(args), cdr(args), result);
+		} else if (strcmp(operator.value.symbol, "DEFMACRO") == 0) {
+			atom_t name;
+			atom_t macro;
+			
+			// Check if we have both of the required 2 arguments.
+			if (list_count(args) != 2) {
+				set_error_msg("Wrong number of arguments. Expected 2");
+				return BAMBOO_ERROR_ARGUMENTS;
+			}
+
+			// Check if the first argument is defined like a define-lambda.
+			if (car(args).type != ATOM_TYPE_PAIR) {
+				set_error_msg("First argument must be a pair or a list like "
+					"when defining a function with define");
+				return BAMBOO_ERROR_WRONG_TYPE;
+			}
+
+			// Get macro name.
+			name = car(car(args));
+			if (name.type != ATOM_TYPE_SYMBOL) {
+				set_error_msg("Macro name must be of type symbol");
+				return BAMBOO_ERROR_WRONG_TYPE;
+			}
+
+			// Make the macro.
+			err = bamboo_closure(env, cdr(car(args)), cdr(args), &macro);
+			if (err)
+				return err;
+			macro.type = ATOM_TYPE_MACRO;
+
+			// Return the name symbol and add the macro to the environment.
+			*result = name;
+			return bamboo_env_set(env, name, macro);
 		}
 	}
 
@@ -850,6 +883,20 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 	err = bamboo_eval_expr(operator, env, &operator);
 	if (err)
 		return err;
+
+	// Check if we have a macro to evaluate.
+	if (operator.type == ATOM_TYPE_MACRO) {
+		atom_t expansion;
+
+		// Expand the macro.
+		operator.type = ATOM_TYPE_CLOSURE;
+		err = apply(operator, args, &expansion);
+		if (err)
+			return err;
+
+		// Evaluate the expanded macro.
+		return bamboo_eval_expr(expansion, env, result);
+	}
 
 	// Copy the arguments list to allow for future use without being overritten.
 	args = shallow_copy_list(args);
@@ -1038,8 +1085,15 @@ void bamboo_print_expr(atom_t atom) {
 		bamboo_print_expr(cdr(cdr(atom)));
 		putstr(">");
 		break;
+	case ATOM_TYPE_MACRO:
+		putstr("#<MACRO:");
+		bamboo_print_expr(car(cdr(atom)));
+		putstr(" ");
+		bamboo_print_expr(cdr(cdr(atom)));
+		putstr(">");
+		break;
 	default:
-		putstr("Don't know how to show this");
+		putstr("Unknown type. Don't know how to display this");
     }
 }
 

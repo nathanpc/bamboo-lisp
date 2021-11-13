@@ -34,7 +34,8 @@ typedef enum {
 	ATOM_TYPE_FLOAT,
 	ATOM_TYPE_BOOLEAN,
 	ATOM_TYPE_BUILTIN,
-	ATOM_TYPE_CLOSURE
+	ATOM_TYPE_CLOSURE,
+	ATOM_TYPE_MACRO
 } atom_type_t;
 
 // Atom structures typedefs.
