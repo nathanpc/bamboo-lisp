@@ -253,20 +253,27 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 		atom_t *result) {
 	atom_t tmp;
 
-	// Check if both arguments and body are lists.
-	if (!listp(args) || !listp(body)) {
-		set_error_msg("Arguments and closure body must be lists");
+	// Check if the body is a list.
+	if (!listp(body)) {
+		set_error_msg("Closure body must be a list");
 		return BAMBOO_ERROR_SYNTAX;
 	}
 
-	// Check if all argument names are symbols.
+	// Check if all argument names are symbols or if it ends in a pair.
 	tmp = args;
 	while (!nilp(tmp)) {
-		if (car(tmp).type != ATOM_TYPE_SYMBOL) {
-			set_error_msg("All arguments must be symbols");
+		// Check if we have a variadic function or an invalid arguments list.
+		if (tmp.type == ATOM_TYPE_SYMBOL) {
+			// Last argument is a symbol instead of nil. This means we have a
+			// variadic function.
+			break;
+		} else if ((tmp.type != ATOM_TYPE_PAIR) ||
+				(car(tmp).type != ATOM_TYPE_SYMBOL)) {
+			set_error_msg("All arguments must be symbols or a pair at the end");
 			return BAMBOO_ERROR_SYNTAX;
 		}
 
+		// Next argument.
 		tmp = cdr(tmp);
 	}
 
@@ -355,6 +362,14 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 
 	// Bind the local environment argument values.
 	while (!nilp(arg_names)) {
+		// Check if we have a variadic function and are dealing with the
+		// argument that will hold the rest list.
+		if (arg_names.type == ATOM_TYPE_SYMBOL) {
+			bamboo_env_set(env, arg_names, args);
+			args = nil;
+			break;
+		}
+		
 		// Check if the argument value list ends prematurely.
 		if (nilp(args)) {
 			set_error_msg("Argument value list ended prematurely");
