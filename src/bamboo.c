@@ -537,6 +537,10 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 		IF_ERROR(err)
 			return err;
 
+		// Check if we've just returned from parsing a quoted list.
+		if (err == BAMBOO_PAREN_END)
+			return BAMBOO_PAREN_QUOTE_END;
+
 		return BAMBOO_QUOTE_END;
 	default:
 		return parse_primitive(&token, atom);
@@ -691,22 +695,26 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 		err = bamboo_parse_expr(token.start, &(token.end), &tmp_atom);
 		IF_SPECIAL_COND(err) {
 			// We are dealing with a special condition.
-			if (err == BAMBOO_PAREN_END) {
+			switch (err) {
+			case BAMBOO_PAREN_END:
 				// We've reached the end of a list. Move the end of the token
 				// in the last stack and return OK.
 				*end = token.end;
-				return BAMBOO_OK;
-			} else if (err == BAMBOO_QUOTE_END) {
+				return BAMBOO_PAREN_END;
+			case BAMBOO_QUOTE_END:
 				// We've just ended dealing with a quote shorthand. Let's ignore
 				// the next token since it has already been dealt with.
 				err = lex(token.end, &token);
 				IF_ERROR(err)
 					return err;
-
+				
+				// Let's just continue to the next line. It's fine.
+			case BAMBOO_PAREN_QUOTE_END:
 				// Move the end of the token in the last stack.
 				*end = token.end;
 				err = BAMBOO_OK;
-			} else {
+				break;
+			default:
 				// We haven't implemented this new special condition apparently.
 				set_error_msg("Unknown special condition");
 				return err;

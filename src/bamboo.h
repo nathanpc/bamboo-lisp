@@ -16,6 +16,7 @@
 
 // Parser return values.
 typedef enum {
+	BAMBOO_PAREN_QUOTE_END = -3,
 	BAMBOO_PAREN_END = -2,
 	BAMBOO_QUOTE_END = -1,
 	BAMBOO_OK = 0,
