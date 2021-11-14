@@ -261,10 +261,8 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 	atom_t tmp;
 
 	// Check if the body is a list.
-	if (!listp(body)) {
-		set_error_msg("Closure body must be a list");
-		return BAMBOO_ERROR_SYNTAX;
-	}
+	if (!listp(body))
+		return bamboo_error(BAMBOO_ERROR_SYNTAX, "Closure body must be a list");
 
 	// Check if all argument names are symbols or if it ends in a pair.
 	tmp = args;
@@ -276,8 +274,8 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 			break;
 		} else if ((tmp.type != ATOM_TYPE_PAIR) ||
 				(car(tmp).type != ATOM_TYPE_SYMBOL)) {
-			set_error_msg("All arguments must be symbols or a pair at the end");
-			return BAMBOO_ERROR_SYNTAX;
+			return bamboo_error(BAMBOO_ERROR_SYNTAX,
+				"All arguments must be symbols or a pair at the end");
 		}
 
 		// Next argument.
@@ -358,8 +356,8 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 		// Call the built-in function.
 		return (*func.value.builtin)(args, result);
 	} else if (func.type != ATOM_TYPE_CLOSURE) {
-		set_error_msg("Function atom must be of type built-in or closure");
-		return BAMBOO_ERROR_WRONG_TYPE;
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			"Function atom must be of type built-in or closure");
 	}
 
 	// Create a local environment for the closure and get its different parts.
@@ -379,8 +377,8 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 		
 		// Check if the argument value list ends prematurely.
 		if (nilp(args)) {
-			set_error_msg("Argument value list ended prematurely");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Argument value list ended prematurely");
 		}
 
 		// Assign the value to the argument.
@@ -393,8 +391,8 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 
 	// Check if we still have argument values that weren't assigned.
 	if (!nilp(args)) {
-		set_error_msg("Too many argument values passed to the closure");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"Too many argument values passed to the closure");
 	}
 
 	// Evaluate the body of the closure with our local environment.
@@ -491,8 +489,7 @@ bamboo_error_t lex(const char *str, token_t *token) {
         token->start = NULL;
         token->end = NULL;
 
-		set_error_msg("Empty line");
-        return BAMBOO_ERROR_SYNTAX;
+		return bamboo_error(BAMBOO_ERROR_SYNTAX, "Empty line");
     }
 
     // Set the starting point of our token.
@@ -535,9 +532,9 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 		// Check if we are trying to quote a list.
 		if (token.end[0] == '(') {
 			// Sadly I'm having issues implementing this, so just error out.
-			set_error_msg("Can't use the quote shorthand for quoting lists. "
-				"Please use the (quote) syntax for quoring lists");
-			return BAMBOO_ERROR_SYNTAX;
+			return bamboo_error(BAMBOO_ERROR_SYNTAX,
+				"Can't use the quote shorthand for quoting lists. Please use "
+				"the (quote) syntax for quoring lists");
 		}
 
 		// Parse quoted body.
@@ -633,9 +630,9 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
 	// Check if we don't have an invalid syntax.
 	if ((token->start + 1) == token->end) {
-		set_error_msg("Special values must have at least one character "
-			"after the # character");
-		return BAMBOO_ERROR_SYNTAX;
+		return bamboo_error(BAMBOO_ERROR_SYNTAX,
+			"Special values must have at least one character after the # "
+			"character");
 	}
 
 	// Check which kind of special value we are dealing with.
@@ -649,8 +646,8 @@ bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
 		*atom = bamboo_boolean(true);
 		return BAMBOO_OK;
 	default:
-		set_error_msg("Invalid type of hash expression");
-		return BAMBOO_ERROR_SYNTAX;
+		return bamboo_error(BAMBOO_ERROR_SYNTAX,
+			"Invalid type of hash expression");
 	}
 }
 
@@ -685,15 +682,15 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 
 			// Check if the pair separator is the first token in the atom.
 			if (nilp(*atom)) {
-				set_error_msg("Pair delimiter without left-hand atom");
-				return BAMBOO_ERROR_SYNTAX;
+				return bamboo_error(BAMBOO_ERROR_SYNTAX,
+					"Pair delimiter without left-hand atom");
 			}
 
 			// Check if we have something after the pair separator.
 			err = lex(token.end, &test_token);
 			if (err || (test_token.start[0] == ')')) {
-				set_error_msg("Pair ends without right-hand atom");
-				return BAMBOO_ERROR_SYNTAX;
+				return bamboo_error(BAMBOO_ERROR_SYNTAX,
+					"Pair ends without right-hand atom");
 			}
 
 			// Move to the next token.
@@ -726,8 +723,7 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 				break;
 			default:
 				// We haven't implemented this new special condition apparently.
-				set_error_msg("Unknown special condition");
-				return err;
+				return bamboo_error(err, "Unknown special condition");
 			}
 		} else if (err) {
 			// Looks like we've errored out.
@@ -742,8 +738,8 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 		} else {
 			// Check if we are trying to append something to a pair.
 			if (!nilp(*last_atom)) {
-				set_error_msg("Tried to append an atom to a pair");
-				return BAMBOO_ERROR_SYNTAX;
+				return bamboo_error(BAMBOO_ERROR_SYNTAX,
+					"Tried to append an atom to a pair");
 			}
 
 			// Check if we are dealing with a pair.
@@ -792,8 +788,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 	// Check if we actually have a list to evaluate.
 	if (!listp(expr)) {
-		set_error_msg("Expression is not of list type");
-		return BAMBOO_ERROR_SYNTAX;
+		return bamboo_error(BAMBOO_ERROR_SYNTAX,
+			"Expression is not of list type");
 	}
 
 	// Get the operator and its arguments.
@@ -806,8 +802,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 		if (strcmp(operator.value.symbol, "QUOTE") == 0) {
 			// Check if we have the single required arguments.
 			if (list_count(args) != 1) {
-				set_error_msg("Wrong number of arguments. Expected 1");
-				return BAMBOO_ERROR_ARGUMENTS;
+				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+					"Wrong number of arguments. Expected 1");
 			}
 
 			// Return the arguments without evaluating.
@@ -819,8 +815,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 			// Check if we have the right number of arguments.
 			if (list_count(args) != 3) {
-				set_error_msg("Wrong number of arguments. Expected 3");
-				return BAMBOO_ERROR_ARGUMENTS;
+				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+					"Wrong number of arguments. Expected 3");
 			}
 
 			// Evaluate the condition.
@@ -845,8 +841,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 			// Check if we have both of the required 2 arguments.
 			if (list_count(args) != 2) {
-				set_error_msg("Wrong number of arguments. Expected 2");
-				return BAMBOO_ERROR_ARGUMENTS;
+				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+					"Wrong number of arguments. Expected 2");
 			}
 
 			// Get the reference symbol.
@@ -865,14 +861,13 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 				// Check if we actually have a symbol for the closure name.
 				if (symbol.type != ATOM_TYPE_SYMBOL) {
-					set_error_msg("First element of argument 0 list should be "
-						"a symbol");
-					return BAMBOO_ERROR_WRONG_TYPE;
+					return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+						"First element of argument 0 list should be a symbol");
 				}
 				break;
 			default:
-				set_error_msg("Argument 0 should be of type symbol or pair");
-				return BAMBOO_ERROR_WRONG_TYPE;
+				return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+					"Argument 0 should be of type symbol or pair");
 			}
 
 			// Put the symbol in th environment.
@@ -881,8 +876,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 		} else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
 			// Check if we have both of the required 2 arguments.
 			if (list_count(args) != 2) {
-				set_error_msg("Wrong number of arguments. Expected 2");
-				return BAMBOO_ERROR_ARGUMENTS;
+				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+					"Wrong number of arguments. Expected 2");
 			}
 
 			// Make the closure.
@@ -893,22 +888,22 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			
 			// Check if we have both of the required 2 arguments.
 			if (list_count(args) != 2) {
-				set_error_msg("Wrong number of arguments. Expected 2");
-				return BAMBOO_ERROR_ARGUMENTS;
+				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+					"Wrong number of arguments. Expected 2");
 			}
 
 			// Check if the first argument is defined like a define-lambda.
 			if (car(args).type != ATOM_TYPE_PAIR) {
-				set_error_msg("First argument must be a pair or a list like "
-					"when defining a function with define");
-				return BAMBOO_ERROR_WRONG_TYPE;
+				return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+					"First argument must be a pair or a list like when "
+					"defining a function with define");
 			}
 
 			// Get macro name.
 			name = car(car(args));
 			if (name.type != ATOM_TYPE_SYMBOL) {
-				set_error_msg("Macro name must be of type symbol");
-				return BAMBOO_ERROR_WRONG_TYPE;
+				return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+					"Macro name must be of type symbol");
 			}
 
 			// Make the macro.
@@ -1016,9 +1011,7 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 		// Build the error string.
 		snprintf(msg, ERROR_MSG_STR_LEN, "Symbol '%s' not found in any of the "
 			"environments", symbol.value.symbol);
-		set_error_msg(msg);
-
-		return BAMBOO_ERROR_UNBOUND;
+		return bamboo_error(BAMBOO_ERROR_UNBOUND, msg);
 	}
 
 	// Search for the symbol in the parent.
@@ -1237,6 +1230,19 @@ void set_error_msg(const char *msg) {
 	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
 
+/**
+ * Sets the internal error message variable and returns the specified error
+ * code.
+ * 
+ * @param  err Error code to be returned.
+ * @param  msg Error message to be set.
+ * @return     Error code passed in 'err'.
+ */
+bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg) {
+	set_error_msg(msg);
+	return err;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //                             Built-in Functions                             //
@@ -1247,8 +1253,8 @@ void set_error_msg(const char *msg) {
 bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 1) {
-		set_error_msg("This function expects a single argument");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects a single argument");
 	}
 
 	// Do what's appropriate for each scenario.
@@ -1257,8 +1263,7 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 		*result = nil;
 	} else if (car(args).type != ATOM_TYPE_PAIR) {
 		// Is it actually a pair?
-		set_error_msg("Argument must be a pair");
-		return BAMBOO_ERROR_WRONG_TYPE;
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE, "Argument must be a pair");
 	} else {
 		// Just get the first element of the pair.
 		*result = car(car(args));
@@ -1271,8 +1276,8 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 1) {
-		set_error_msg("This function expects a single argument");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects a single argument");
 	}
 
 	// Do what's appropriate for each scenario.
@@ -1281,8 +1286,7 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 		*result = nil;
 	} else if (car(args).type != ATOM_TYPE_PAIR) {
 		// Is it actually a pair?
-		set_error_msg("Argument must be a pair");
-		return BAMBOO_ERROR_WRONG_TYPE;
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE, "Argument must be a pair");
 	} else {
 		// Just get the first element of the pair.
 		*result = cdr(car(args));
@@ -1295,8 +1299,8 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 2) {
-		set_error_msg("This function expects 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 2 arguments");
 	}
 
 	// Create the pair.
@@ -1314,8 +1318,8 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments summing them.
@@ -1341,9 +1345,9 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 			num.value.dfloat += car(args).value.dfloat;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 		// Go to the next argument.
@@ -1366,8 +1370,8 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments subtracting them.
@@ -1410,9 +1414,9 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 			num.value.dfloat -= car(args).value.dfloat;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -1436,8 +1440,8 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments multiplying them.
@@ -1480,9 +1484,9 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 			num.value.dfloat *= car(args).value.dfloat;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -1506,8 +1510,8 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments dividing them.
@@ -1543,9 +1547,9 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 			num.value.dfloat /= car(args).value.dfloat;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -1562,8 +1566,8 @@ next:
 bamboo_error_t builtin_not(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (list_count(args) != 1) {
-		set_error_msg("This function expects exactly 1 argument");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects exactly 1 argument");
 	}
 
 	// Populate the result atom.
@@ -1579,8 +1583,8 @@ bamboo_error_t builtin_and(atom_t args, atom_t *result) {
 	
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -1609,8 +1613,8 @@ bamboo_error_t builtin_or(atom_t args, atom_t *result) {
 	
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -1639,8 +1643,8 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -1675,9 +1679,9 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 				return BAMBOO_OK;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -1697,8 +1701,8 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -1733,9 +1737,9 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 				return BAMBOO_OK;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -1755,8 +1759,8 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
-		set_error_msg("This function expects at least 2 arguments");
-		return BAMBOO_ERROR_ARGUMENTS;
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -1791,9 +1795,9 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 				return BAMBOO_OK;
 		} else {
 			// Non-numeric argument.
-			set_error_msg("Invalid type of argument. This function only "
-						  "accepts numerics");
-			return BAMBOO_ERROR_WRONG_TYPE;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:

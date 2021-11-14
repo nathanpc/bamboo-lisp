@@ -102,8 +102,11 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 						  atom_t *atom);
 bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 
+// Error handling.
+const char *bamboo_error_detail(void);
+bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg);
+
 // Debugging.
-const char* bamboo_error_detail(void);
 void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
 void bamboo_print_tokens(const char *str);
