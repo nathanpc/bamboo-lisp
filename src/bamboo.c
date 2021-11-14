@@ -56,9 +56,20 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result);
 bamboo_error_t builtin_not(atom_t args, atom_t *result);
 bamboo_error_t builtin_and(atom_t args, atom_t *result);
 bamboo_error_t builtin_or(atom_t args, atom_t *result);
+bamboo_error_t builtin_eq(atom_t args, atom_t *result);
 bamboo_error_t builtin_numeq(atom_t args, atom_t *result);
 bamboo_error_t builtin_lt(atom_t args, atom_t *result);
 bamboo_error_t builtin_gt(atom_t args, atom_t *result);
+bamboo_error_t builtin_nilp(atom_t args, atom_t *result);
+bamboo_error_t builtin_pairp(atom_t args, atom_t *result);
+bamboo_error_t builtin_symbolp(atom_t args, atom_t *result);
+bamboo_error_t builtin_integerp(atom_t args, atom_t *result);
+bamboo_error_t builtin_floatp(atom_t args, atom_t *result);
+bamboo_error_t builtin_numericp(atom_t args, atom_t *result);
+bamboo_error_t builtin_booleanp(atom_t args, atom_t *result);
+bamboo_error_t builtin_builtinp(atom_t args, atom_t *result);
+bamboo_error_t builtin_closurep(atom_t args, atom_t *result);
+bamboo_error_t builtin_macrop(atom_t args, atom_t *result);
 
 // Initialization functions.
 bamboo_error_t populate_builtins(env_t *env);
@@ -144,6 +155,41 @@ bamboo_error_t populate_builtins(env_t *env) {
 	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, ">", builtin_gt);
+	IF_ERROR(err)
+		return err;
+
+	// Atom testing.
+	err = bamboo_env_set_builtin(*env, "EQ?", builtin_eq);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "NIL?", builtin_nilp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "PAIR?", builtin_pairp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "SYMBOL?", builtin_symbolp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "INTEGER?", builtin_integerp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "FLOAT?", builtin_floatp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "NUMERIC?", builtin_numericp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "BOOLEAN?", builtin_booleanp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "BUILTIN?", builtin_builtinp);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "CLOSURE?", builtin_closurep);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "MACRO?", builtin_macrop);
 	IF_ERROR(err)
 		return err;
 
@@ -1847,6 +1893,178 @@ next:
 
 	// Looks like they were all equal all along.
 	*result = bamboo_boolean(true);
+	return BAMBOO_OK;
+}
+
+// (eq? a b) -> boolean
+bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
+	atom_t a;
+	atom_t b;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 2 arguments");
+	}
+
+	// Get the two atoms to be tested.
+	a = car(args);
+	b = car(cdr(args));
+
+	// If the types are different then it's instantly different.
+	if (a.type != b.type) {
+		*result = bamboo_boolean(false);
+		return BAMBOO_OK;
+	}
+
+	// Check for more equality.
+	switch (a.type) {
+	case ATOM_TYPE_NIL:
+		*result = bamboo_boolean(true);
+		break;
+	case ATOM_TYPE_PAIR:
+	case ATOM_TYPE_CLOSURE:
+	case ATOM_TYPE_MACRO:
+		*result = bamboo_boolean(a.value.pair == b.value.pair);
+		break;
+	case ATOM_TYPE_SYMBOL:
+		*result = bamboo_boolean(a.value.symbol == b.value.symbol);
+		break;
+	case ATOM_TYPE_BOOLEAN:
+		*result = bamboo_boolean(a.value.boolean == b.value.boolean);
+		break;
+	case ATOM_TYPE_INTEGER:
+		*result = bamboo_boolean(a.value.integer == b.value.integer);
+		break;
+	case ATOM_TYPE_FLOAT:
+		*result = bamboo_boolean(a.value.dfloat == b.value.dfloat);
+		break;
+	case ATOM_TYPE_BUILTIN:
+		*result = bamboo_boolean(a.value.builtin == b.value.builtin);
+		break;
+	}
+
+	return BAMBOO_OK;
+}
+
+// (nil? atom) -> boolean
+bamboo_error_t builtin_nilp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_NIL);
+	return BAMBOO_OK;
+}
+
+// (pair? atom) -> boolean
+bamboo_error_t builtin_pairp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_PAIR);
+	return BAMBOO_OK;
+}
+
+// (symbol? atom) -> boolean
+bamboo_error_t builtin_symbolp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_SYMBOL);
+	return BAMBOO_OK;
+}
+
+// (integer? atom) -> boolean
+bamboo_error_t builtin_integerp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_INTEGER);
+	return BAMBOO_OK;
+}
+
+// (float? atom) -> boolean
+bamboo_error_t builtin_floatp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_FLOAT);
+	return BAMBOO_OK;
+}
+
+// (numeric? atom) -> boolean
+bamboo_error_t builtin_numericp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean((car(args).type == ATOM_TYPE_INTEGER) ||
+		(car(args).type == ATOM_TYPE_FLOAT));
+	return BAMBOO_OK;
+}
+
+// (boolean? atom) -> boolean
+bamboo_error_t builtin_booleanp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_BOOLEAN);
+	return BAMBOO_OK;
+}
+
+// (builtin? atom) -> boolean
+bamboo_error_t builtin_builtinp(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_BUILTIN);
+	return BAMBOO_OK;
+}
+
+// (closure? atom) -> boolean
+bamboo_error_t builtin_closurep(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_CLOSURE);
+	return BAMBOO_OK;
+}
+
+// (macro? atom) -> boolean
+bamboo_error_t builtin_macrop(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects 1 argument");
+	}
+
+	*result = bamboo_boolean(car(args).type == ATOM_TYPE_MACRO);
 	return BAMBOO_OK;
 }
 
