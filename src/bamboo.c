@@ -1011,7 +1011,13 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 
 	// Check if we've reached the end of our parent environments to search for.
 	if (nilp(parent)) {
-		set_error_msg("Symbol not found in any of the environments");
+		char msg[ERROR_MSG_STR_LEN + 1];
+
+		// Build the error string.
+		snprintf(msg, ERROR_MSG_STR_LEN, "Symbol '%s' not found in any of the "
+			"environments", symbol.value.symbol);
+		set_error_msg(msg);
+
 		return BAMBOO_ERROR_UNBOUND;
 	}
 
