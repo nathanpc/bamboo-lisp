@@ -38,7 +38,8 @@ int main(void) {
 	// Allocate memory for the REPL input data.
 	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
 	if (input == NULL) {
-		printf("Can't allocate the input string for the REPL" LINEBREAK);
+		fprintf(stderr, "Can't allocate the input string for the REPL"
+			LINEBREAK);
 		return 1;
 	}
 
@@ -62,7 +63,7 @@ int main(void) {
 
 			// Show the error message.
 			bamboo_print_error(err);
-			printf(LINEBREAK);
+			fprintf(stderr, LINEBREAK);
 
 			continue;
 		}
@@ -71,7 +72,7 @@ int main(void) {
 		err = bamboo_eval_expr(parsed, env, &result);
 		if (err > BAMBOO_OK) {
 			bamboo_print_error(err);
-			printf(LINEBREAK);
+			fprintf(stderr, LINEBREAK);
 
 			continue;
 		}

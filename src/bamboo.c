@@ -34,6 +34,7 @@ static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 
 // Private methods.
 void putstr(const char *str);
+void putstrerr(const char *str);
 bool atom_boolean_val(atom_t atom);
 void set_error_msg(const char *msg);
 void fatal_error(bamboo_error_t err, const char *msg);
@@ -1159,34 +1160,38 @@ void bamboo_print_expr(atom_t atom) {
 void bamboo_print_error(bamboo_error_t err) {
 	switch (err) {
 	case BAMBOO_OK:
-		putstr("OK");
+		putstrerr("OK");
 		break;
 	case BAMBOO_PAREN_END:
-		putstr("PARENTHESIS ENDED");
+		putstrerr("PARENTHESIS ENDED");
 		break;
 	case BAMBOO_ERROR_SYNTAX:
-		putstr("SYNTAX ERROR: ");
-		putstr(bamboo_error_detail());
+		putstrerr("SYNTAX ERROR: ");
+		putstrerr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_UNBOUND:
-		putstr("UNBOUND SYMBOL ERROR: ");
-		putstr(bamboo_error_detail());
+		putstrerr("UNBOUND SYMBOL ERROR: ");
+		putstrerr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_ARGUMENTS:
-		putstr("INCORRECT ARGUMENT ERROR: ");
-		putstr(bamboo_error_detail());
+		putstrerr("INCORRECT ARGUMENT ERROR: ");
+		putstrerr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_WRONG_TYPE:
-		putstr("WRONG TYPE ERROR: ");
-		putstr(bamboo_error_detail());
+		putstrerr("WRONG TYPE ERROR: ");
+		putstrerr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_UNKNOWN:
-		putstr("UNKNOWN ERROR: ");
-		putstr(bamboo_error_detail());
+		putstrerr("UNKNOWN ERROR: ");
+		putstrerr(bamboo_error_detail());
+		break;
+	default:
+		putstrerr("I have no clue why you're here, because you shouldn't: ");
+		putstrerr(bamboo_error_detail());
 		break;
 	}
 
-	putstr(LINEBREAK);
+	putstrerr(LINEBREAK);
 }
 
 /**
@@ -1205,7 +1210,7 @@ void bamboo_print_tokens(const char *str) {
 		int i;
 
 		// Allocate string for the token string.
-		buf = (char *)malloc((token.end - token.start + 1) * sizeof(char));
+		buf = (char *)malloc(((token.end - token.start) + 1) * sizeof(char));
 		if (buf == NULL) {
 			fatal_error(BAMBOO_ERROR_ALLOCATION,
 				"Can't allocate string for token printing");
@@ -1874,6 +1879,18 @@ bool atom_boolean_val(atom_t atom) {
 void putstr(const char *str) {
 	const char *tmp = str;
 
-    while (*tmp)
-        putchar(*tmp++);
+	while (*tmp)
+		putchar(*tmp++);
+}
+
+/**
+ * Prints a string to stderr. Just like puts stderr, but without the newline.
+ *
+ * @param str String to be printed.
+ */
+void putstrerr(const char *str) {
+	const char *tmp = str;
+
+	while (*tmp)
+		putc(*tmp++, stderr);
 }
