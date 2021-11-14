@@ -35,8 +35,14 @@ int main(void) {
 	// Add our own custom built-in function.
 	bamboo_env_set_builtin(env, "QUIT", builtin_quit);
 
-	// Start the REPL.
+	// Allocate memory for the REPL input data.
 	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
+	if (input == NULL) {
+		printf("Can't allocate the input string for the REPL" LINEBREAK);
+		return 1;
+	}
+
+	// Start the REPL.
 	while (!readline(input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
@@ -53,6 +59,8 @@ int main(void) {
 			for (spaces = 0; spaces < (end - input); spaces++)
 				putchar(' ');
 			printf("^ ");
+
+			// Show the error message.
 			bamboo_print_error(err);
 			printf(LINEBREAK);
 
@@ -76,7 +84,6 @@ int main(void) {
 	// Quit.
 	free(input);
 	printf("Bye!" LINEBREAK);
-	system("pause");
 	return 0;
 }
 

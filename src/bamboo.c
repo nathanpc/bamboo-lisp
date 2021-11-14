@@ -36,6 +36,7 @@ static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 void putstr(const char *str);
 bool atom_boolean_val(atom_t atom);
 void set_error_msg(const char *msg);
+void fatal_error(bamboo_error_t err, const char *msg);
 uint8_t list_count(atom_t list);
 atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const char *str, token_t *token);
@@ -308,6 +309,10 @@ atom_t cons(atom_t _car, atom_t _cdr) {
     // Setup the pair atom.
     pair.type = ATOM_TYPE_PAIR;
     pair.value.pair = (pair_t *)malloc(sizeof(pair_t));
+	if (pair.value.pair == NULL) {
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate cons pair");
+		return nil;
+	}
 
     // Populate the pair.
     car(pair) = _car;
@@ -598,8 +603,14 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		}
 	}
 
-	// Convert the symbol to upper-case.
+	// Allocate string for symbol upper-case conversion.
 	buf = (char *)malloc(sizeof(char) * (end - start + 1));
+	if (buf == NULL) {
+		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string "
+			"for symbol upper-case conversion");
+	}
+
+	// Convert the symbol to upper-case.
 	buftmp = buf;
 	tmp = start;
 	while (tmp != end)
@@ -1193,8 +1204,15 @@ void bamboo_print_tokens(const char *str) {
 		char *buf;
 		int i;
 
-		// Get the token string from the token structure.
+		// Allocate string for the token string.
 		buf = (char *)malloc((token.end - token.start + 1) * sizeof(char));
+		if (buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION,
+				"Can't allocate string for token printing");
+			return;
+		}
+
+		// Get the token string from the token structure.
 		for (i = 0; i < (token.end - token.start); i++) {
 			buf[i] = token.start[i];
 		}
@@ -1241,6 +1259,22 @@ void set_error_msg(const char *msg) {
 bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg) {
 	set_error_msg(msg);
 	return err;
+}
+
+/**
+ * Handles a fatal error where the program is required to exit immediately,
+ * since it's unrecoverable.
+ * 
+ * @param err Error code to be returned.
+ * @param msg Error message to be set.
+ */
+void fatal_error(bamboo_error_t err, const char *msg) {
+	// Print the error message.
+	set_error_msg(msg);
+	bamboo_print_error(err);
+
+	// Bye guys!
+	exit(err);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
