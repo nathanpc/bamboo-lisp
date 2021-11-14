@@ -20,8 +20,7 @@
 #endif
 
 // Private definitions.
-#define SYMBOL_NIL_STR    "NIL"
-#define ERROR_MSG_STR_LEN 100
+#define ERROR_MSG_STR_LEN 200
 
 // Token structure.
 typedef struct {
@@ -533,6 +532,15 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 	case ')':
 		return BAMBOO_PAREN_END;
 	case '\'':
+		// Check if we are trying to quote a list.
+		if (token.end[0] == '(') {
+			// Sadly I'm having issues implementing this, so just error out.
+			set_error_msg("Can't use the quote shorthand for quoting lists. "
+				"Please use the (quote) syntax for quoring lists");
+			return BAMBOO_ERROR_SYNTAX;
+		}
+
+		// Parse quoted body.
 		*atom = cons(bamboo_symbol("QUOTE"), cons(nil, nil));
 		err = bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
 		IF_ERROR(err)
@@ -602,7 +610,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	*buftmp = '\0';
 
 	// Check if we are dealing with a NIL symbol.
-	if (strcmp(buf, SYMBOL_NIL_STR) == 0) {
+	if (strcmp(buf, "NIL") == 0) {
 		*atom = nil;
 	} else {
 		// Looks like a regular symbol.
@@ -661,13 +669,14 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 	bamboo_error_t err;
 	atom_t tmp_atom;
 	atom_t *last_atom;
-	bool is_pair = false;
+	bool is_pair;
 
 	// Reset values.
 	*atom = nil;
 	tmp_atom = nil;
 	last_atom = atom;
 	token.end = input;
+	is_pair = false;
 
 	while (!(err = lex(token.end, &token))) {
 		// Check if we have a pair.
@@ -701,7 +710,7 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 				// We've reached the end of a list. Move the end of the token
 				// in the last stack and return OK.
 				*end = token.end;
-				return BAMBOO_PAREN_END;
+				return BAMBOO_OK;
 			case BAMBOO_QUOTE_END:
 				// We've just ended dealing with a quote shorthand. Let's ignore
 				// the next token since it has already been dealt with.
