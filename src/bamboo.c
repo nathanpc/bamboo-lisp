@@ -38,7 +38,10 @@ void putstrerr(const char *str);
 bool atom_boolean_val(atom_t atom);
 void set_error_msg(const char *msg);
 void fatal_error(bamboo_error_t err, const char *msg);
-uint8_t list_count(atom_t list);
+uint16_t list_count(atom_t list);
+atom_t list_ref(atom_t list, uint16_t index);
+void list_set(atom_t list, uint16_t index, atom_t value);
+void list_reverse(atom_t *list);
 atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const char *str, token_t *token);
 bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom);
@@ -495,8 +498,8 @@ atom_t shallow_copy_list(atom_t list) {
  * @param  list List atom to have its elements counted.
  * @return      Number of elements in the list. 0 if it isn't a valid list.
  */
-uint8_t list_count(atom_t list) {
-	uint8_t count = 0;
+uint16_t list_count(atom_t list) {
+	uint16_t count = 0;
 
 	// Iterate over the list until we reach the final nil atom.
 	while (!nilp(list)) {
@@ -512,9 +515,63 @@ uint8_t list_count(atom_t list) {
 	return count;
 }
 
+/**
+ * Gets an element at an index from a list. Just like 'list-ref' in Scheme.
+ *
+ * @param  list  List you want the element from.
+ * @param  index Index of the element you want.
+ * @return       Element at the specified index of the list.
+ */
+atom_t list_ref(atom_t list, uint16_t index) {
+	// Iterate through the list.
+	while (index--)
+		list = cdr(list);
+
+	// Get our element.
+	return car(list);
+}
+
+/**
+ * Sets the value of an element at an specific index in a list. Just like
+ * 'list-set!' in Scheme.
+ *
+ * @param list  List that you want to edit.
+ * @param index Index of the element you want to change.
+ * @param value New element you want placed at the specified index of the list.
+ */
+void list_set(atom_t list, uint16_t index, atom_t value) {
+	// Iterate through the list.
+	while (index--)
+		list = cdr(list);
+
+	// Set the new element's value.
+	car(list) = value;
+}
+
+/**
+ * Reverses the elements in a list.
+ *
+ * @param list Pointer to the list that will have its elements reversed.
+ */
+void list_reverse(atom_t *list) {
+	atom_t tail = nil;
+
+	// Iterate over the list reversing its elements into tail.
+	while (!nilp(*list)) {
+		atom_t tmp;
+
+		tmp = cdr(*list);
+		cdr(*list) = tail;
+		tail = *list;
+		*list = tmp;
+	}
+
+	*list = tail;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
-//                      Lexing, Parsing, and Evaluation                       //
+//                             Lexing and Parsing                             //
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -816,6 +873,12 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 
 	return BAMBOO_OK;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                                 Evaluation                                 //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Evaluates an expression in a given environment.
