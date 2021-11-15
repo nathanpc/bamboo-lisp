@@ -14,6 +14,7 @@
 // Convinience macros.
 #define IF_ERROR(err)        if ((err) > BAMBOO_OK)
 #define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
+#define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
 #ifdef _MSC_VER
 // Make Microsoft's compiler happy about our use of strdup.
 #define strdup _strdup
@@ -27,6 +28,17 @@ typedef struct {
 	const char *start;
 	const char *end;
 } token_t;
+
+// Stack frame definitions.
+typedef atom_t frame_t;
+typedef enum {
+	STACK_PARENT_INDEX = 0,
+	STACK_ENV_INDEX,
+	STACK_EVAL_OP_INDEX,
+	STACK_PENDING_ARGS_INDEX,
+	STACK_EVAL_ARGS_INDEX,
+	STACK_BODY_INDEX
+} frame_idx_t;
 
 // Private variables.
 static char bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
@@ -47,6 +59,12 @@ bamboo_error_t lex(const char *str, token_t *token);
 bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
 bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
+frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail);
+bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env);
+bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env);
+bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env);
+bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
+	atom_t *result);
 
 // Built-in functions.
 bamboo_error_t builtin_car(atom_t args, atom_t *result);
@@ -883,197 +901,497 @@ bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 /**
  * Evaluates an expression in a given environment.
  *
+ * This function used to be so simple, but used recursion and caused stack
+ * overflows in deep recursions, so it had to be re-written, for the older
+ * version check the commit 0d1bc6c.
+ *
  * @param  expr   Expression to be evaluated.
  * @param  env    Environment list to use for this evaluation.
  * @param  result Pointer to the resulting atom of the evaluation.
  * @return        BAMBOO_OK if the evaluation was successful.
+ *
+ * @see https://lwh.jp/lisp/continuations.html
  */
 bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
-	atom_t operator;
-	atom_t args;
-	atom_t tmp;
+	frame_t stack;
 	bamboo_error_t err;
 
 	// Clean slate.
+	err = BAMBOO_OK;
+	stack = nil;
 	*result = nil;
 
-	// Check if the expression is simple and doesn't require any manipulation.
-	if (expr.type == ATOM_TYPE_SYMBOL) {
-		// A symbol from the environment was requested.
-		return bamboo_env_get(env, expr, result);
-	} else if (expr.type != ATOM_TYPE_PAIR) {
-		// Literals always evaluate to themselves.
-		*result = expr;
-		return BAMBOO_OK;
-	}
-
-	// Check if we actually have a list to evaluate.
-	if (!listp(expr)) {
-		return bamboo_error(BAMBOO_ERROR_SYNTAX,
-			"Expression is not of list type");
-	}
-
-	// Get the operator and its arguments.
-	operator = car(expr);
-	args = cdr(expr);
-
-	// Check if it's a special forms.
-	if (operator.type == ATOM_TYPE_SYMBOL) {
-		// Check which special form we need.
-		if (strcmp(operator.value.symbol, "QUOTE") == 0) {
-			// Check if we have the single required arguments.
-			if (list_count(args) != 1) {
-				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-					"Wrong number of arguments. Expected 1");
-			}
-
-			// Return the arguments without evaluating.
-			*result = car(args);
-			return BAMBOO_OK;
-		} else if (strcmp(operator.value.symbol, "IF") == 0) {
-			atom_t cond;
-			atom_t path;
-
-			// Check if we have the right number of arguments.
-			if (list_count(args) != 3) {
-				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-					"Wrong number of arguments. Expected 3");
-			}
-
-			// Evaluate the condition.
-			err = bamboo_eval_expr(car(args), env, &cond);
-			IF_ERROR(err)
-				return err;
-
-			// Check if we have a false boolean.
-			if ((cond.type == ATOM_TYPE_BOOLEAN) && (!cond.value.boolean)) {
-				// False
-				path = car(cdr(cdr(args)));
-			} else {
-				// True
-				path = car(cdr(args));
-			}
-
-			// Evaluate only the correct path.
-			return bamboo_eval_expr(path, env, result);
-		} else if (strcmp(operator.value.symbol, "DEFINE") == 0) {
-			atom_t symbol;
-			atom_t value;
-
-			// Check if we have both of the required 2 arguments.
-			if (list_count(args) != 2) {
-				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-					"Wrong number of arguments. Expected 2");
-			}
-
-			// Get the reference symbol.
-			symbol = car(args);
-			switch (symbol.type) {
-			case ATOM_TYPE_SYMBOL:
-				// Evaluate value before assigning it to the symbol.
-				err = bamboo_eval_expr(car(cdr(args)), env, &value);
-				IF_ERROR(err)
-					return err;
-				break;
-			case ATOM_TYPE_PAIR:
-				// Build a closure. We are using the define lambda shorthand.
-				err = bamboo_closure(env, cdr(symbol), cdr(args), &value);
-				symbol = car(symbol);
-
-				// Check if we actually have a symbol for the closure name.
-				if (symbol.type != ATOM_TYPE_SYMBOL) {
-					return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-						"First element of argument 0 list should be a symbol");
-				}
-				break;
-			default:
-				return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-					"Argument 0 should be of type symbol or pair");
-			}
-
-			// Put the symbol in th environment.
-			*result = symbol;
-			return bamboo_env_set(env, symbol, value);
-		} else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
-			// Check if we have both of the required 2 arguments.
-			if (list_count(args) != 2) {
-				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-					"Wrong number of arguments. Expected 2");
-			}
-
-			// Make the closure.
-			return bamboo_closure(env, car(args), cdr(args), result);
-		} else if (strcmp(operator.value.symbol, "DEFMACRO") == 0) {
-			atom_t name;
-			atom_t macro;
+	do {
+		// Check if the expression is simple and doesn't require manipulation.
+		if (expr.type == ATOM_TYPE_SYMBOL) {
+			// A symbol from the environment was requested.
+			err = bamboo_env_get(env, expr, result);
+		} else if (expr.type != ATOM_TYPE_PAIR) {
+			// Literals always evaluate to themselves.
+			*result = expr;
+		} else {
+			atom_t operator;
+			atom_t args;
 			
-			// Check if we have both of the required 2 arguments.
-			if (list_count(args) != 2) {
-				return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-					"Wrong number of arguments. Expected 2");
+			/*
+			// Check if we actually have a list to evaluate.
+			if (!listp(expr)) {
+				return bamboo_error(BAMBOO_ERROR_SYNTAX,
+					"Expression is not of list type");
+			}
+			*/
+			
+			// Get the operator and its arguments.
+			operator = car(expr);
+			args = cdr(expr);
+
+			// Check if it's a special form to be evaluated.
+			if (operator.type == ATOM_TYPE_SYMBOL) {
+				// Check which special form we need to evaluate.
+				if (strcmp(operator.value.symbol, "QUOTE") == 0) {
+					// Check if we have the single required arguments.
+					if (list_count(args) != 1) {
+						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+							"Wrong number of arguments. Expected 1");
+					}
+
+					// Return the arguments without evaluating.
+					*result = car(args);
+				} else if (strcmp(operator.value.symbol, "IF") == 0) {
+					// Check if we have the right number of arguments.
+					if (list_count(args) != 3) {
+						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+							"Wrong number of arguments. Expected 3");
+					}
+
+					// Place it in the stack for later evaluation.
+					stack = new_stack_frame(stack, env, cdr(args));
+					list_set(stack, STACK_EVAL_OP_INDEX, operator);
+					expr = car(args);
+					
+					continue;
+				} else if (strcmp(operator.value.symbol, "DEFINE") == 0) {
+					atom_t symbol;
+
+					// Check if we have both of the required 2 arguments.
+					if (list_count(args) != 2) {
+						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+							"Wrong number of arguments. Expected 2");
+					}
+
+					// Get the reference symbol.
+					symbol = car(args);
+					switch (symbol.type) {
+					case ATOM_TYPE_SYMBOL:
+						// Defining a simple symbol.
+						stack = new_stack_frame(stack, env, nil);
+						list_set(stack, STACK_EVAL_OP_INDEX, operator);
+						list_set(stack, STACK_EVAL_ARGS_INDEX, symbol);
+						expr = car(cdr(args));
+						continue;
+					case ATOM_TYPE_PAIR:
+						// Build a closure since we are using the define lambda
+						// shorthand.
+						err = bamboo_closure(env, cdr(symbol), cdr(args),
+							result);
+						symbol = car(symbol);
+
+						// Check if we actually have a symbol for closure name.
+						if (symbol.type != ATOM_TYPE_SYMBOL) {
+							return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+								"First element of argument 0 list should be a "
+								"symbol");
+						}
+
+						// Put the symbol in th environment.
+						(void)bamboo_env_set(env, symbol, *result);
+						*result = symbol;
+						break;
+					default:
+						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+							"Argument 0 should be of type symbol or pair");
+					}
+				} else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
+					// Check if we have both of the required 2 arguments.
+					if (list_count(args) != 2) {
+						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+							"Wrong number of arguments. Expected 2");
+					}
+
+					// Make the closure.
+					err = bamboo_closure(env, car(args), cdr(args), result);
+				} else if (strcmp(operator.value.symbol, "DEFMACRO") == 0) {
+					atom_t name;
+					atom_t macro;
+					
+					// Check if we have both of the required 2 arguments.
+					if (list_count(args) != 2) {
+						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+							"Wrong number of arguments. Expected 2");
+					}
+
+					// Check if the first argument is defined like a define
+					// lambda shorthand.
+					if (car(args).type != ATOM_TYPE_PAIR) {
+						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+							"First argument must be a pair or a list like when "
+							"defining a function using only define");
+					}
+
+					// Get macro name.
+					name = car(car(args));
+					if (name.type != ATOM_TYPE_SYMBOL) {
+						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+							"Macro name must be of type symbol");
+					}
+
+					// Make the macro.
+					err = bamboo_closure(env, cdr(car(args)), cdr(args),
+						&macro);
+					IF_NOT_ERROR(err) {
+						// Return the name symbol and add the macro to the
+						// environment.
+						macro.type = ATOM_TYPE_MACRO;
+						*result = name;
+						(void)bamboo_env_set(env, name, macro);
+					}
+				} else if (strcmp(operator.value.symbol, "APPLY") == 0) {
+					// Check if we have both of the required 2 arguments.
+					if (list_count(args) != 2) {
+						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+							"Wrong number of arguments. Expected 2");
+					}
+
+					// Evaluate the apply by the magic of the stack.
+					stack = new_stack_frame(stack, env, cdr(args));
+					list_set(stack, STACK_EVAL_OP_INDEX, operator);
+					expr = car(args);
+					continue;
+				} else {
+					goto push;
+				}
+			} else if (operator.type == ATOM_TYPE_BUILTIN) {
+				// Execute a built-in function.
+				err = (*operator.value.builtin)(args, result);
+			} else {
+				// Handle a closure or macro.
+push:
+				stack = new_stack_frame(stack, env, args);
+				expr = operator;
+				continue;
+			}
+		}
+
+		// Are we at the end of the stack?
+		if (nilp(stack))
+			break;
+
+		// Get the return value from the stack frame evaluation.
+		IF_NOT_ERROR(err)
+			err = eval_expr_return(&stack, &expr, &env, result);
+	} while (err <= BAMBOO_OK);
+
+	return err;
+}
+
+/**
+ * Creates a brand new virtual stack frame used to allow us to not run into CPU
+ * stack overflows while evaluating expressions.
+ *
+ * To be honest I have no clue how this whole thing is working, I just want to
+ * make sure we don't run into stack overflows.
+ *
+ * This is how the stack frame structure should look like:
+ * (parent env evaluated-op (pending-arg...) (evaluated-arg...) (body...))
+ *
+ * @param  parent Parent stack frame.
+ * @param  env    Environment for the stack frame to be evaluated in.
+ * @param  tail   Rest of the stack frame to be evaluated later.
+ * @return        A brand new stack frame atom.
+ *
+ * @see https://lwh.jp/lisp/continuations.html
+ */
+frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail) {
+	return cons(parent, cons(env, cons(nil /* evaluated-op */, cons(tail,
+   		cons(nil /* evaluated-args */, cons(nil /* body */, nil))))));
+}
+
+/**
+ * Grabs the current expression to be evaluated from the body of the stack
+ * frame.
+ *
+ * To be honest I have no clue how this whole thing is working, I just want to
+ * make sure we don't run into stack overflows.
+ *
+ * @param  stack Pointer to the stack frame we are currently evaluating.
+ * @param  expr  Pointer to the expression that will be grabbed from the stack
+ *               to be evaluated later.
+ * @param  env   Pointer to the environment where the current expression will be
+ *               evaluated in. This will also come from our stack frame.
+ * @return       BAMBOO_OK if everything went fine.
+ *
+ * @see https://lwh.jp/lisp/continuations.html
+ */
+bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env) {
+	atom_t body;
+
+	// Get the different parts of the stack.
+	*env = list_ref(*stack, STACK_ENV_INDEX);
+	body = list_ref(*stack, STACK_BODY_INDEX);
+	*expr = car(body);
+
+	// Check the next item in line.
+	body = cdr(body);
+	if (nilp(body)) {
+		// We've reached the of this stack. Pop the stack to its parent.
+		*stack = car(*stack);
+	} else {
+		// Advance the body of the atom to the next item in line.
+		list_set(*stack, STACK_BODY_INDEX, body);
+	}
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Binds function arguments into the new stack frame environment if they haven't
+ * been bound already.
+ *
+ * To be honest I have no clue how this whole thing is working, I just want to
+ * make sure we don't run into stack overflows.
+ *
+ * @param  stack Pointer to the stack frame we are currently evaluating.
+ * @param  expr  Pointer to the expression that will be grabbed from the stack
+ *               to be evaluated later.
+ * @param  env   Pointer to the environment where the current expression will be
+ *               evaluated in. This will also come from our stack frame.
+ * @return       BAMBOO_OK if everything went fine.
+ *
+ * @see https://lwh.jp/lisp/continuations.html
+ */
+bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
+	atom_t operator;
+	atom_t args;
+	atom_t arg_names;
+	atom_t body;
+
+	// If we have anything in the body just return it then.
+	body = list_ref(*stack, STACK_BODY_INDEX);
+	if (!nilp(body))
+		return eval_expr_exec(stack, expr, env);
+
+	// Get the operator and function arguments from the stack frame.
+	operator = list_ref(*stack, STACK_EVAL_OP_INDEX);
+	args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+
+	// Get all of the parameters from the stack frame.
+	*env = bamboo_env_new(car(operator));
+	arg_names = car(cdr(operator));
+	body = cdr(cdr(operator));
+	list_set(*stack, STACK_ENV_INDEX, *env);
+	list_set(*stack, STACK_BODY_INDEX, body);
+
+	// Go through the arguments binding them to the environment.
+	while (!nilp(arg_names)) {
+		// Looks like we just have a symbol, nothing else to do here.
+		if (arg_names.type == ATOM_TYPE_SYMBOL) {
+			bamboo_env_set(*env, arg_names, args);
+			args = nil;
+			break;
+		}
+
+		// Not enough argument values given the amount of argument names.
+		if (nilp(args)) {
+ 			return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+ 				"Argument value list ended prematurely");
+		}
+
+		// Push the argument into the environment.
+		bamboo_env_set(*env, car(arg_names), car(args));
+
+		// Move to the next argument.
+		arg_names = cdr(arg_names);
+		args = cdr(args);
+	}
+
+	// Check if we have arguments remaining.
+	if (!nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"Arguments left over after iterating through argument names");
+	}
+
+	list_set(*stack, STACK_EVAL_ARGS_INDEX, nil);
+	return eval_expr_exec(stack, expr, env);
+}
+
+/**
+ * Once all arguments have been evaluated, this function is responsible for
+ * generating an expression to call a builtin, or delegating to 'eval_do_bind'.
+ *
+ * To be honest I have no clue how this whole thing is working, I just want to
+ * make sure we don't run into stack overflows.
+ *
+ * @param  stack Pointer to the stack frame we are currently evaluating.
+ * @param  expr  Pointer to the expression that will be grabbed from the stack
+ *               to be evaluated later.
+ * @param  env   Pointer to the environment where the current expression will be
+ *               evaluated in. This will also come from our stack frame.
+ * @return       BAMBOO_OK if everything went fine.
+ *
+ * @see https://lwh.jp/lisp/continuations.html
+ */
+bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
+	atom_t operator;
+	atom_t args;
+
+	// Get the operator and arguments from the stack frame.
+	operator = list_ref(*stack, STACK_EVAL_OP_INDEX);
+	args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+
+	// Reverse the arguments if we have any.
+	if (!nilp(args)) {
+		list_reverse(&args);
+		list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
+	}
+
+	// Handle the apply special form.
+	if (operator.type == ATOM_TYPE_SYMBOL) {
+		if (strcmp(operator.value.symbol, "APPLY") == 0) {
+			// Replace the current frame.
+			*stack = car(*stack);
+			*stack = new_stack_frame(*stack, *env, nil);
+			operator = car(args);
+			args = car(cdr(args));
+
+			// Check if we actually have an arguments list.
+			if (!listp(args)) {
+				return bamboo_error(BAMBOO_ERROR_SYNTAX,
+					"Arguments atom must be of list type");
 			}
 
-			// Check if the first argument is defined like a define-lambda.
-			if (car(args).type != ATOM_TYPE_PAIR) {
-				return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-					"First argument must be a pair or a list like when "
-					"defining a function with define");
-			}
-
-			// Get macro name.
-			name = car(car(args));
-			if (name.type != ATOM_TYPE_SYMBOL) {
-				return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-					"Macro name must be of type symbol");
-			}
-
-			// Make the macro.
-			err = bamboo_closure(env, cdr(car(args)), cdr(args), &macro);
-			IF_ERROR(err)
-				return err;
-			macro.type = ATOM_TYPE_MACRO;
-
-			// Return the name symbol and add the macro to the environment.
-			*result = name;
-			return bamboo_env_set(env, name, macro);
+			// Go to the next one.
+			list_set(*stack, STACK_EVAL_OP_INDEX, operator);
+			list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
 		}
 	}
 
-	// Evaluate operator.
-	err = bamboo_eval_expr(operator, env, &operator);
-	IF_ERROR(err)
-		return err;
-
-	// Check if we have a macro to evaluate.
-	if (operator.type == ATOM_TYPE_MACRO) {
-		atom_t expansion;
-
-		// Expand the macro.
-		operator.type = ATOM_TYPE_CLOSURE;
-		err = apply(operator, args, &expansion);
-		IF_ERROR(err)
-			return err;
-
-		// Evaluate the expanded macro.
-		return bamboo_eval_expr(expansion, env, result);
+	// Handle built-ins.
+	if (operator.type == ATOM_TYPE_BUILTIN) {
+		*stack = car(*stack);
+		*expr = cons(operator, args);
+	
+		return BAMBOO_OK;
+	} else if (operator.type != ATOM_TYPE_CLOSURE) {
+		// Looks like we don't have anything that's "apply"able.
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			"Applyable operator must be either a built-in or a closure");
 	}
 
-	// Copy the arguments list to allow for future use without being overritten.
-	args = shallow_copy_list(args);
+	return eval_expr_bind(stack, expr, env);
+}
 
-	// Evaluate the arguments.
-	tmp = args;
-	while (!nilp(tmp)) {
-		err = bamboo_eval_expr(car(tmp), env, &car(tmp));
-		IF_ERROR(err)
-			return err;
+/**
+ * Once an expression has been evaluated, this function is responsible for
+ * storing the result, which is either an operator, an argument, or an
+ * intermediate body expression, and fetching the next expression to evaluate.
+ *
+ * To be honest I have no clue how this whole thing is working, I just want to
+ * make sure we don't run into stack overflows.
+ *
+ * @param  stack  Pointer to the stack frame we are currently evaluating.
+ * @param  expr   Pointer to the expression that will be grabbed from the stack
+ *                to be evaluated later.
+ * @param  env    Pointer to the environment where the current expression will be
+ *                evaluated in. This will also come from our stack frame.
+ * @param  result Pointer to the return value of the evaluated stack frame.
+ * @return        BAMBOO_OK if everything went fine.
+ *
+ * @see https://lwh.jp/lisp/continuations.html
+ */
+bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
+		atom_t *result) {
+	atom_t operator;
+	atom_t args;
+	atom_t body;
 
-		// Go to the next element in the list.
-		tmp = cdr(tmp);
+	// Gets the parameters from the stack frame.
+	*env = list_ref(*stack, STACK_ENV_INDEX);
+	operator = list_ref(*stack, STACK_EVAL_OP_INDEX);
+	body = list_ref(*stack, STACK_BODY_INDEX);
+
+	// Check if we are still running a procedure. If so, just ignore the result.
+	if (!nilp(body))
+		return eval_expr_apply(stack, expr, env);
+
+	// Check in which phase of evaluation we are currently at.
+	if (nilp(operator)) {
+		// Finished evaluating operator.
+		operator = *result;
+		list_set(*stack, STACK_EVAL_OP_INDEX, operator);
+
+		// Are we doing a macro?
+		if (operator.type == ATOM_TYPE_MACRO) {
+			// Don't evaluate macro arguments.
+			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
+			
+			*stack = new_stack_frame(*stack, *env, nil);
+			operator.type = ATOM_TYPE_CLOSURE;
+			list_set(*stack, STACK_EVAL_OP_INDEX, operator);
+			list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
+			
+			return eval_expr_bind(stack, expr, env);
+		}
+	} else if (operator.type == ATOM_TYPE_SYMBOL) {
+		// Finished working on an special form.
+		if (strcmp(operator.value.symbol, "DEFINE") == 0) {
+			atom_t symbol;
+
+			symbol = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+			(void)bamboo_env_set(*env, symbol, *result);
+			*stack = car(*stack);
+			*expr = cons(bamboo_symbol("QUOTE"), cons(symbol, nil));
+			
+			return BAMBOO_OK;
+		} else if (strcmp(operator.value.symbol, "IF") == 0) {
+			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
+
+			// Choose which path to go for an if statement.
+			if ((result->type == ATOM_TYPE_BOOLEAN) && (!result->value.boolean)) {
+				*expr = car(cdr(args));
+			} else {
+				*expr = car(args);
+			}
+			
+			*stack = car(*stack);
+			return BAMBOO_OK;
+		} else {
+			goto store_argument;
+		}
+	} else if (operator.type == ATOM_TYPE_MACRO) {
+		// Finished evaluating macro.
+		*expr = *result;
+		*stack = car(*stack);
+		
+		return BAMBOO_OK;
+	} else {
+store_argument:
+		// Store the evaluated argument.
+		args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+		list_set(*stack, STACK_EVAL_ARGS_INDEX, cons(*result, args));
 	}
 
-	// Call a function with the supplied arguments.
-	return apply(operator, args, result);
+	// Get the next set of arguments to evaluate.
+	args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
+	if (nilp(args)) {
+		// No more arguments left to evaluate.
+		return eval_expr_apply(stack, expr, env);
+	}
+
+	// Evaluate the next argument.
+	*expr = car(args);
+	list_set(*stack, STACK_PENDING_ARGS_INDEX, cdr(args));
+	
+	return BAMBOO_OK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
