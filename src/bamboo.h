@@ -12,7 +12,12 @@
 #include <stdbool.h>
 
 // Global definitions.
+#ifndef LINEBREAK
 #define LINEBREAK "\r\n"
+#endif
+#ifndef GC_ITER_COUNT_SWEEP
+#define GC_ITER_COUNT_SWEEP 10000
+#endif
 
 // Parser return values.
 typedef enum {

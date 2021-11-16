@@ -7,6 +7,7 @@
 
 #include "bamboo.h"
 #include <stdlib.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -16,8 +17,8 @@
 #define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
 #ifdef _MSC_VER
-// Make Microsoft's compiler happy about our use of strdup.
-#define strdup _strdup
+// Make Microsoft's compiler happy about our use of strdup and strncpy.
+#define strdup  _strdup
 #endif
 
 // Private definitions.
@@ -40,9 +41,23 @@ typedef enum {
 	STACK_BODY_INDEX
 } frame_idx_t;
 
+// Garbage collection definitions.
+typedef enum {
+	GC_TO_FREE = 0,
+	GC_IN_USE
+} gc_mark_t;
+typedef struct allocation_s allocation_t;
+struct allocation_s {
+	pair_t pair;
+	gc_mark_t mark;
+	allocation_t *next;
+};
+
 // Private variables.
 static char bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
 static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
+static allocation_t *bamboo_allocations = NULL;
+static uint32_t bamboo_gc_iter_counter = 0;
 
 // Private methods.
 void putstr(const char *str);
@@ -50,6 +65,8 @@ void putstrerr(const char *str);
 bool atom_boolean_val(atom_t atom);
 void set_error_msg(const char *msg);
 void fatal_error(bamboo_error_t err, const char *msg);
+void gc_mark(atom_t root);
+void gc(void);
 uint16_t list_count(atom_t list);
 atom_t list_ref(atom_t list, uint16_t index);
 void list_set(atom_t list, uint16_t index, atom_t value);
@@ -111,6 +128,9 @@ bamboo_error_t bamboo_init(env_t *env) {
 	// Make sure the error message string is properly terminated.
 	bamboo_error_msg[0] = '\0';
 	bamboo_error_msg[ERROR_MSG_STR_LEN] = '\0';
+
+	// Make sure the garbage collection iteration counter is zeroed out.
+	bamboo_gc_iter_counter = 0;
 
 	// Initialize the root environment.
 	*env = bamboo_env_new(nil);
@@ -372,15 +392,25 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
  * @return      Atom pair.
  */
 atom_t cons(atom_t _car, atom_t _cdr) {
+	allocation_t *alloc;
     atom_t pair;
+
+	// Create a new allocation.
+	alloc = (allocation_t *)malloc(sizeof(allocation_t));
+	if (alloc == NULL) {
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate structure for "
+			"garbage collector allocation tracking");
+		return nil;
+	}
+
+	// Fill up the new allocation and push the linked list forward.
+	alloc->mark = GC_TO_FREE;
+	alloc->next = bamboo_allocations;
+	bamboo_allocations = alloc;
 
     // Setup the pair atom.
     pair.type = ATOM_TYPE_PAIR;
-    pair.value.pair = (pair_t *)malloc(sizeof(pair_t));
-	if (pair.value.pair == NULL) {
-		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate cons pair");
-		return nil;
-	}
+    pair.value.pair = &alloc->pair;
 
     // Populate the pair.
     car(pair) = _car;
@@ -922,6 +952,18 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 	*result = nil;
 
 	do {
+		// Should we trigger the garbage collector?
+		if (++bamboo_gc_iter_counter == GC_ITER_COUNT_SWEEP) {
+			// Mark our current parameters as in use for good measure.
+			gc_mark(expr);
+			gc_mark(env);
+			gc_mark(stack);
+
+			// Collect the garbage and reset the iteration counter.
+			gc();
+			bamboo_gc_iter_counter = 0;
+		}
+		
 		// Check if the expression is simple and doesn't require manipulation.
 		if (expr.type == ATOM_TYPE_SYMBOL) {
 			// A symbol from the environment was requested.
@@ -932,14 +974,6 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 		} else {
 			atom_t operator;
 			atom_t args;
-			
-			/*
-			// Check if we actually have a list to evaluate.
-			if (!listp(expr)) {
-				return bamboo_error(BAMBOO_ERROR_SYNTAX,
-					"Expression is not of list type");
-			}
-			*/
 			
 			// Get the operator and its arguments.
 			operator = car(expr);
@@ -1505,6 +1539,83 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
 bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
 									  builtin_func_t func) {
 	return bamboo_env_set(env, bamboo_symbol(name), bamboo_builtin(func));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                             Garbage Collection                             //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Marks a whole tree of pairs as "in use" so that the garbage collector won't
+ * free them up.
+ *
+ * @param root Root of the pair tree to be marked as "in use".
+ */
+void gc_mark(atom_t root) {
+	allocation_t *alloc;
+
+	// Ignore non-"garbage collectable" types.
+	switch (root.type) {
+	case ATOM_TYPE_PAIR:
+	case ATOM_TYPE_CLOSURE:
+	case ATOM_TYPE_MACRO:
+		break;
+	default:
+		return;
+	}
+
+	// Get the allocation from the pair.
+ 	alloc = (allocation_t *)((size_t)root.value.pair -
+ 		offsetof(allocation_t, pair));
+
+	// If it's already marked, then there's nothing to do.
+	if (alloc->mark == GC_IN_USE)
+		return;
+
+	// Mark it as "in use".
+	alloc->mark = GC_IN_USE;
+
+	// Traverse the pair marking everything as "in use".
+	gc_mark(car(root));
+	gc_mark(cdr(root));
+}
+
+/**
+ * Go through the allocation linked list collecting the garbage.
+ */
+void gc(void) {
+	allocation_t *alloc;
+	allocation_t **tmp;
+
+	// Make sure we don't trash our global symbols list.
+	gc_mark(bamboo_symbol_table);
+
+	// Free up all unmarked allocations.
+	tmp = &bamboo_allocations;
+	while (*tmp != NULL) {
+		alloc = *tmp;
+
+		// Check if it's marked to be freed.
+		if (alloc->mark == GC_TO_FREE) {
+			// Free it up!
+			*tmp = alloc->next;
+			free(alloc);
+
+			continue;
+		}
+
+		// Let's go to the next item in the allocation list.
+		tmp = &alloc->next;
+	}
+
+	// Clear all the marks for the next round.
+	alloc = bamboo_allocations;
+	while (alloc != NULL) {
+		alloc->mark = GC_TO_FREE;
+		alloc = alloc->next;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
