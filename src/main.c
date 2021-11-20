@@ -11,7 +11,7 @@
 #include "bamboo.h"
 
 // Private definitions.
-#define REPL_INPUT_MAX_LEN 100
+#define REPL_INPUT_MAX_LEN 512
 
 // Private methods.
 int readline(char *buf, size_t len);
@@ -96,7 +96,8 @@ int main(void) {
  * @return     Non-zero to break out of the REPL loop.
  */
 int readline(char *buf, size_t len) {
-	uint8_t i;
+	uint16_t i;
+	int16_t openparens = 0;
 
 	// Put some safe guards in place.
 	buf[0] = '\0';
@@ -108,16 +109,30 @@ int readline(char *buf, size_t len) {
 		// Get character from STDIN.
 		int c = getchar();
 
-		// Did we get a return?
-		if (c == '\n') {
-			buf[i] = '\0';
+		switch (c) {
+		case '(':
+			// Opened a parenthesis.
+			openparens++;
 			break;
+		case ')':
+			// Closed a parenthesis.
+			openparens--;
+			break;
+		case '\n':
+			// Only return the string if all the parenthesis have been closed.
+			if (openparens < 1) {
+				buf[i] = '\0';
+				goto returnstr;
+			}
+
+			printf("  ");
 		}
 
 		// Append character to the buffer.
 	    buf[i] = (char)c;
 	}
 
+returnstr:
 	return 0;
 }
 
