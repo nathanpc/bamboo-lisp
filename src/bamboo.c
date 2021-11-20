@@ -635,7 +635,7 @@ void list_reverse(atom_t *list) {
 bamboo_error_t lex(const char *str, token_t *token) {
     const char *tmp = str;
     const char *wspace = " \t\r\n";
-    const char *delim = "() \t\n";
+    const char *delim = "() \t\r\n";
     const char *prefix = "()\'";
 
     // Skip any leading whitespace.
