@@ -1,4 +1,7 @@
-# Bamboo Lisp
+<h1>
+	<img src="https://raw.githubusercontent.com/nathanpc/bamboo-lisp/master/Icon/Icon-512.png" style="max-height: 64px;" />
+	Bamboo Lisp
+</h1>
 
 An extremely embeddable (single source/header file) Lisp dialect.
 
