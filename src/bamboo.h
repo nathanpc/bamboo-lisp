@@ -11,9 +11,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Unicode support.
+#ifdef _MSC_VER
+#define UNICODE
+#include <tchar.h>
+#else
+#define UNICODE
+#include <wchar.h>
+typedef wchar_t TCHAR;
+#endif
+
 // Global definitions.
 #ifndef LINEBREAK
-#define LINEBREAK "\r\n"
+#define LINEBREAK _T("\r\n")
 #endif
 #ifndef GC_ITER_COUNT_SWEEP
 #define GC_ITER_COUNT_SWEEP 10000
@@ -60,8 +70,8 @@ struct atom_s {
 	atom_type_t type;
 	union {
 		pair_t *pair;
-		const char *symbol;
-		char **str;
+		const TCHAR *symbol;
+		TCHAR **str;
 		long integer;
 		double dfloat;
 		bool boolean;
@@ -92,32 +102,32 @@ bamboo_error_t bamboo_init(env_t *env);
 env_t bamboo_env_new(env_t parent);
 bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
 bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
-bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
+bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 									  builtin_func_t func);
 
 // Primitive creation.
 atom_t bamboo_int(long num);
 atom_t bamboo_float(double num);
-atom_t bamboo_symbol(const char *name);
+atom_t bamboo_symbol(const TCHAR *name);
 atom_t bamboo_boolean(bool value);
-atom_t bamboo_string(const char *str);
+atom_t bamboo_string(const TCHAR *str);
 atom_t bamboo_builtin(builtin_func_t func);
 bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 		atom_t *result);
 
 
 // Parsing and evaluation.
-bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
+bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 						  atom_t *atom);
 bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 
 // Error handling.
-const char *bamboo_error_detail(void);
-bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg);
+const TCHAR *bamboo_error_detail(void);
+bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg);
 
 // Debugging.
 void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
-void bamboo_print_tokens(const char *str);
+void bamboo_print_tokens(const TCHAR *str);
 
 #endif	// _BAMBOO_H

@@ -26,8 +26,8 @@
 
 // Token structure.
 typedef struct {
-	const char *start;
-	const char *end;
+	const TCHAR *start;
+	const TCHAR *end;
 } token_t;
 
 // Stack frame definitions.
@@ -53,24 +53,24 @@ typedef enum {
 typedef struct allocation_s allocation_t;
 struct allocation_s {
 	pair_t pair;
-	char *str;
+	TCHAR *str;
 	alloc_type_t type;
 	gc_mark_t mark;
 	allocation_t *next;
 };
 
 // Private variables.
-static char bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
+static TCHAR bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
 static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 static allocation_t *bamboo_allocations = NULL;
 static uint32_t bamboo_gc_iter_counter = 0;
 
 // Private methods.
-void putstr(const char *str);
-void putstrerr(const char *str);
+void putstr(const TCHAR *str);
+void putstrerr(const TCHAR *str);
 bool atom_boolean_val(atom_t atom);
-void set_error_msg(const char *msg);
-void fatal_error(bamboo_error_t err, const char *msg);
+void set_error_msg(const TCHAR *msg);
+void fatal_error(bamboo_error_t err, const TCHAR *msg);
 void gc_mark(atom_t root);
 void gc(void);
 uint16_t list_count(atom_t list);
@@ -78,12 +78,12 @@ atom_t list_ref(atom_t list, uint16_t index);
 void list_set(atom_t list, uint16_t index, atom_t value);
 void list_reverse(atom_t *list);
 atom_t shallow_copy_list(atom_t list);
-bamboo_error_t lex(const char *str, token_t *token);
+bamboo_error_t lex(const TCHAR *str, token_t *token);
 bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
-bamboo_error_t parse_string(const token_t *token, const char **end,
+bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
 	atom_t *atom);
-bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
+bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom);
 frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail);
 bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env);
 bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env);
@@ -303,7 +303,7 @@ atom_t bamboo_float(double num) {
  * @param  name Symbol name.
  * @return      Symbol atom.
  */
-atom_t bamboo_symbol(const char *name) {
+atom_t bamboo_symbol(const TCHAR *name) {
     atom_t atom;
     atom_t tmp;
 
@@ -348,7 +348,7 @@ atom_t bamboo_boolean(bool value) {
  * @param  str String to be stored.
  * @return     String atom.
  */
-atom_t bamboo_string(const char *str) {
+atom_t bamboo_string(const TCHAR *str) {
 	allocation_t *alloc;
     atom_t atom;
 
@@ -687,11 +687,11 @@ void list_reverse(atom_t *list) {
  * @return       BAMBOO_OK if a token was found. BAMBOO_ERROR_SYNTAX if we've
  *               reached the end of the string without finding any tokens.
  */
-bamboo_error_t lex(const char *str, token_t *token) {
-    const char *tmp = str;
-    const char *wspace = " \t\r\n";
-    const char *delim = "()\" \t\r\n";
-    const char *prefix = "()\'\"";
+bamboo_error_t lex(const TCHAR *str, token_t *token) {
+    const TCHAR *tmp = str;
+    const TCHAR *wspace = " \t\r\n";
+    const TCHAR *delim = "()\" \t\r\n";
+    const TCHAR *prefix = "()\'\"";
 
     // Skip any leading whitespace.
     tmp += strspn(tmp, wspace);
@@ -726,7 +726,7 @@ bamboo_error_t lex(const char *str, token_t *token) {
  * @param  atom  Pointer to the atom object generated from the expression.
  * @return       BAMBOO_OK if the parsing was successful.
  */
-bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
+bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 						  atom_t *atom) {
 	token_t token;
 	bamboo_error_t err;
@@ -778,11 +778,11 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
  * @return       BAMBOO_OK if we were able to parse the token correctly.
  */
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
-	char *buf;
-	char *buftmp;
-    const char *tmp;
-	const char *start = token->start;
-	const char *end = token->end;
+	TCHAR *buf;
+	TCHAR *buftmp;
+    const TCHAR *tmp;
+	const TCHAR *start = token->start;
+	const TCHAR *end = token->end;
 
 	// Check if we are dealing with a hash expression.
 	if (start[0] == '#')
@@ -813,7 +813,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	}
 
 	// Allocate string for symbol upper-case conversion.
-	buf = (char *)malloc(sizeof(char) * (end - start + 1));
+	buf = (TCHAR *)malloc(sizeof(TCHAR) * (end - start + 1));
 	if (buf == NULL) {
 		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string "
 			"for symbol upper-case conversion");
@@ -880,12 +880,12 @@ bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
  * @param  atom  Pointer to an atom structure that will hold the parsed atom.
  * @return       BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_string(const token_t *token, const char **end,
+bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
 							atom_t *atom) {
 	size_t len;
-	char *buf;
-	char *buftmp;
-	const char *tmp;
+	TCHAR *buf;
+	TCHAR *buftmp;
+	const TCHAR *tmp;
 
 	// Calculate the length of our string.
 	tmp = token->end;
@@ -902,7 +902,7 @@ bamboo_error_t parse_string(const token_t *token, const char **end,
 	}
 
 	// Allocate space for our string.
-	buf = (char *)malloc((len + 1) * sizeof(char));
+	buf = (TCHAR *)malloc((len + 1) * sizeof(TCHAR));
 	if (buf == NULL) {
 		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string "
 			"for string atom");
@@ -937,7 +937,7 @@ bamboo_error_t parse_string(const token_t *token, const char **end,
  *               parsing operation.
  * @return       BAMBOO_OK if the parsing was sucessful.
  */
-bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
+bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 	token_t token;
 	bamboo_error_t err;
 	atom_t tmp_atom;
@@ -1592,7 +1592,7 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 
 	// Check if we've reached the end of our parent environments to search for.
 	if (nilp(parent)) {
-		char msg[ERROR_MSG_STR_LEN + 1];
+		TCHAR msg[ERROR_MSG_STR_LEN + 1];
 
 		// Build the error string.
 		snprintf(msg, ERROR_MSG_STR_LEN, "Symbol '%s' not found in any of the "
@@ -1649,7 +1649,7 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
  * @param  func Built-in function that will be called for this symbol.
  * @return      BAMBOO_OK if the operation was successful.
  */
-bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
+bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 									  builtin_func_t func) {
 	return bamboo_env_set(env, bamboo_symbol(name), bamboo_builtin(func));
 }
@@ -1860,18 +1860,18 @@ void bamboo_print_error(bamboo_error_t err) {
  *
  * @param str String to debug tokens in.
  */
-void bamboo_print_tokens(const char *str) {
+void bamboo_print_tokens(const TCHAR *str) {
 	token_t token;
 	bamboo_error_t err;
 
 	// Go through tokens in string.
 	token.end = str;
 	while (!(err = lex(token.end, &token))) {
-		char *buf;
+		TCHAR *buf;
 		int i;
 
 		// Allocate string for the token string.
-		buf = (char *)malloc(((token.end - token.start) + 1) * sizeof(char));
+		buf = (TCHAR *)malloc(((token.end - token.start) + 1) * sizeof(TCHAR));
 		if (buf == NULL) {
 			fatal_error(BAMBOO_ERROR_ALLOCATION,
 				"Can't allocate string for token printing");
@@ -1901,7 +1901,7 @@ void bamboo_print_tokens(const char *str) {
  *
  * @return Last detailed error message.
  */
-const char* bamboo_error_detail(void) {
+const TCHAR* bamboo_error_detail(void) {
 	return bamboo_error_msg;
 }
 
@@ -1910,7 +1910,7 @@ const char* bamboo_error_detail(void) {
  *
  * @param msg Error message to be set.
  */
-void set_error_msg(const char *msg) {
+void set_error_msg(const TCHAR *msg) {
 	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
 
@@ -1922,7 +1922,7 @@ void set_error_msg(const char *msg) {
  * @param  msg Error message to be set.
  * @return     Error code passed in 'err'.
  */
-bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg) {
+bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg) {
 	set_error_msg(msg);
 	return err;
 }
@@ -1934,7 +1934,7 @@ bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg) {
  * @param err Error code to be returned.
  * @param msg Error message to be set.
  */
-void fatal_error(bamboo_error_t err, const char *msg) {
+void fatal_error(bamboo_error_t err, const TCHAR *msg) {
 	// Print the error message.
 	set_error_msg(msg);
 	bamboo_print_error(err);
@@ -2703,8 +2703,8 @@ bamboo_error_t builtin_display(atom_t args, atom_t *result) {
 bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	size_t buflen = 0;
 	size_t tmplen = 0;
-	char *tmpbuf = NULL;
-	char *buf = NULL;
+	TCHAR *tmpbuf = NULL;
+	TCHAR *buf = NULL;
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 1) {
@@ -2713,7 +2713,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	}
 
 	// Get a clean slate.
-	buf = (char *)malloc(sizeof(char));
+	buf = (TCHAR *)malloc(sizeof(TCHAR));
 	if (buf == NULL) {
 		*result = nil;
 		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2731,7 +2731,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
-			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
 			if (buf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2749,7 +2749,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
-			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
 			if (buf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2762,7 +2762,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	    case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
 			tmplen = snprintf(NULL, 0, "%ld", car(args).value.integer);
-			tmpbuf = (char *)malloc((tmplen + 1) * sizeof(char));
+			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2772,7 +2772,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
-			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
 			if (buf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2786,7 +2786,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	    case ATOM_TYPE_FLOAT:
 			// Get the length of the string we'll need to concatenate this number.
 			tmplen = snprintf(NULL, 0, "%g", car(args).value.dfloat);
-			tmpbuf = (char *)malloc((tmplen + 1) * sizeof(char));
+			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2796,7 +2796,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
-			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
 			if (buf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2819,7 +2819,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
-			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
 			if (buf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
@@ -2888,11 +2888,15 @@ bool atom_boolean_val(atom_t atom) {
  *
  * @param str String to be printed.
  */
-void putstr(const char *str) {
-	const char *tmp = str;
+void putstr(const TCHAR *str) {
+	const TCHAR *tmp = str;
 
 	while (*tmp)
+#ifdef UNICODE
+		putwchar(*tmp++);
+#else
 		putchar(*tmp++);
+#endif
 }
 
 /**
@@ -2900,9 +2904,13 @@ void putstr(const char *str) {
  *
  * @param str String to be printed.
  */
-void putstrerr(const char *str) {
-	const char *tmp = str;
+void putstrerr(const TCHAR *str) {
+	const TCHAR *tmp = str;
 
 	while (*tmp)
+#ifdef UNICODE
+		putwc(*tmp++, stderr);
+#else
 		putc(*tmp++, stderr);
+#endif
 }
