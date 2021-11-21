@@ -92,12 +92,13 @@ int main(void) {
  * Reads the user input like a command prompt.
  *
  * @param  buf Pointer to the buffer that will hold the user input.
- * @param  len Maximum length to read the user input.
+ * @param  len Maximum length to read the user input including NULL terminator.
  * @return     Non-zero to break out of the REPL loop.
  */
 int readline(char *buf, size_t len) {
 	uint16_t i;
 	int16_t openparens = 0;
+	bool instring = false;
 
 	// Put some safe guards in place.
 	buf[0] = '\0';
@@ -105,18 +106,24 @@ int readline(char *buf, size_t len) {
 
 	// Get user input.
 	printf("> ");
-	for (i = 0; i < REPL_INPUT_MAX_LEN; i++) {
+	for (i = 0; i < len; i++) {
 		// Get character from STDIN.
 		int c = getchar();
 
 		switch (c) {
+		case '\"':
+			// Opening or closing a string.
+			instring = !instring;
+			break;
 		case '(':
 			// Opened a parenthesis.
-			openparens++;
+			if (!instring)
+				openparens++;
 			break;
 		case ')':
 			// Closed a parenthesis.
-			openparens--;
+			if (!instring)
+				openparens--;
 			break;
 		case '\n':
 			// Only return the string if all the parenthesis have been closed.

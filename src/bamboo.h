@@ -36,11 +36,12 @@ typedef enum {
 // Atom types.
 typedef enum {
 	ATOM_TYPE_NIL,
-	ATOM_TYPE_PAIR,
 	ATOM_TYPE_SYMBOL,
 	ATOM_TYPE_INTEGER,
 	ATOM_TYPE_FLOAT,
 	ATOM_TYPE_BOOLEAN,
+	ATOM_TYPE_STRING,
+	ATOM_TYPE_PAIR,
 	ATOM_TYPE_BUILTIN,
 	ATOM_TYPE_CLOSURE,
 	ATOM_TYPE_MACRO
@@ -60,6 +61,7 @@ struct atom_s {
 	union {
 		pair_t *pair;
 		const char *symbol;
+		char *str;
 		long integer;
 		double dfloat;
 		bool boolean;
@@ -98,6 +100,7 @@ atom_t bamboo_int(long num);
 atom_t bamboo_float(double num);
 atom_t bamboo_symbol(const char *name);
 atom_t bamboo_boolean(bool value);
+atom_t bamboo_string(const char *str);
 atom_t bamboo_builtin(builtin_func_t func);
 bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 		atom_t *result);

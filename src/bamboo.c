@@ -75,6 +75,8 @@ atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const char *str, token_t *token);
 bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom);
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
+bamboo_error_t parse_string(const token_t *token, const char **end,
+	atom_t *atom);
 bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
 frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail);
 bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env);
@@ -318,6 +320,22 @@ atom_t bamboo_boolean(bool value) {
 	atom.value.boolean = value;
 
 	return atom;
+}
+
+/**
+ * Builds an string atom.
+ *
+ * @param  str String to be stored.
+ * @return     String atom.
+ */
+atom_t bamboo_string(const char *str) {
+    atom_t atom;
+
+    // Create the new string atom.
+    atom.type = ATOM_TYPE_STRING;
+    atom.value.str = strdup(str);
+
+    return atom;
 }
 
 /**
@@ -635,8 +653,8 @@ void list_reverse(atom_t *list) {
 bamboo_error_t lex(const char *str, token_t *token) {
     const char *tmp = str;
     const char *wspace = " \t\r\n";
-    const char *delim = "() \t\r\n";
-    const char *prefix = "()\'";
+    const char *delim = "()\" \t\r\n";
+    const char *prefix = "()\'\"";
 
     // Skip any leading whitespace.
     tmp += strspn(tmp, wspace);
@@ -681,6 +699,8 @@ bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 		return err;
 
 	switch (token.start[0]) {
+	case '\"':
+		return parse_string(&token, end, atom);
 	case '(':
 		return parse_list(token.end, end, atom);
 	case ')':
@@ -812,6 +832,62 @@ bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
 		return bamboo_error(BAMBOO_ERROR_SYNTAX,
 			"Invalid type of hash expression");
 	}
+}
+
+/**
+ * Parses a string from a given token.
+ *
+ * @param  token Pointer to token structure that holds the beginning and the end
+ *               of a token string.
+ * @param  end   Pointer to the end of the last parsed part of the expression.
+ * @param  atom  Pointer to an atom structure that will hold the parsed atom.
+ * @return       BAMBOO_OK if we were able to parse the token correctly.
+ */
+bamboo_error_t parse_string(const token_t *token, const char **end,
+							atom_t *atom) {
+	size_t len;
+	char *buf;
+	char *buftmp;
+	const char *tmp;
+
+	// Calculate the length of our string.
+	tmp = token->end;
+	len = 0;
+	while (*tmp != '\"') {
+		// Check if the string is never terminated.
+		if (*tmp == '\0') {
+			*end = tmp;
+			return bamboo_error(BAMBOO_ERROR_SYNTAX, "String never terminated");
+		}
+
+		tmp++;
+		len++;
+	}
+
+	// Allocate space for our string.
+	buf = (char *)malloc((len + 1) * sizeof(char));
+	if (buf == NULL) {
+		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string "
+			"for string atom");
+	}
+
+	// Pre-terminate the string.
+	buf[len] = '\0';
+
+	// Copy the string into our buffer.
+	tmp = token->end;
+	buftmp = buf;
+	while (*tmp != '\"') {
+		*buftmp = *tmp++;
+		buftmp++;
+	}
+
+	// Make the atom and free our buffer.
+	*end = ++tmp;
+	*atom = bamboo_string(buf);
+	free(buf);
+	
+	return BAMBOO_OK;
 }
 
 /**
@@ -1645,6 +1721,9 @@ void bamboo_print_expr(atom_t atom) {
         break;
 	case ATOM_TYPE_BOOLEAN:
 		printf("#%c", (atom.value.boolean) ? 't' : 'f');
+		break;
+	case ATOM_TYPE_STRING:
+		printf("\"%s\"", atom.value.str);
 		break;
     case ATOM_TYPE_PAIR:
         putchar('(');
