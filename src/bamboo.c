@@ -116,6 +116,8 @@ bamboo_error_t builtin_booleanp(atom_t args, atom_t *result);
 bamboo_error_t builtin_builtinp(atom_t args, atom_t *result);
 bamboo_error_t builtin_closurep(atom_t args, atom_t *result);
 bamboo_error_t builtin_macrop(atom_t args, atom_t *result);
+bamboo_error_t builtin_display(atom_t args, atom_t *result);
+bamboo_error_t builtin_newline(atom_t args, atom_t *result);
 
 // Initialization functions.
 bamboo_error_t populate_builtins(env_t *env);
@@ -239,6 +241,14 @@ bamboo_error_t populate_builtins(env_t *env) {
 	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "MACRO?", builtin_macrop);
+	IF_ERROR(err)
+		return err;
+
+	// Console I/O.
+	err = bamboo_env_set_builtin(*env, "DISPLAY", builtin_display);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "NEWLINE", builtin_newline);
 	IF_ERROR(err)
 		return err;
 
@@ -1107,9 +1117,9 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) != 2) {
+					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							"Wrong number of arguments. Expected 2");
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Get the reference symbol.
@@ -1146,9 +1156,9 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					}
 				} else if (strcmp(operator.value.symbol, "LAMBDA") == 0) {
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) != 2) {
+					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							"Wrong number of arguments. Expected 2");
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Make the closure.
@@ -1158,9 +1168,9 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					atom_t macro;
 					
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) != 2) {
+					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							"Wrong number of arguments. Expected 2");
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Check if the first argument is defined like a define
@@ -1190,9 +1200,9 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					}
 				} else if (strcmp(operator.value.symbol, "APPLY") == 0) {
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) != 2) {
+					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							"Wrong number of arguments. Expected 2");
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Evaluate the apply by the magic of the stack.
@@ -1780,14 +1790,16 @@ void bamboo_print_expr(atom_t atom) {
 		break;
 	case ATOM_TYPE_CLOSURE:
 		putstr("#<FUNCTION:");
-		bamboo_print_expr(car(cdr(atom)));
+		if (!nilp(car(cdr(atom))))
+			bamboo_print_expr(car(cdr(atom)));
 		putstr(" ");
 		bamboo_print_expr(cdr(cdr(atom)));
 		putstr(">");
 		break;
 	case ATOM_TYPE_MACRO:
 		putstr("#<MACRO:");
-		bamboo_print_expr(car(cdr(atom)));
+		if (!nilp(car(cdr(atom))))
+			bamboo_print_expr(car(cdr(atom)));
 		putstr(" ");
 		bamboo_print_expr(cdr(cdr(atom)));
 		putstr(">");
@@ -2664,6 +2676,50 @@ bamboo_error_t builtin_macrop(atom_t args, atom_t *result) {
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_MACRO);
+	return BAMBOO_OK;
+}
+
+// (display any...) -> nil
+bamboo_error_t builtin_display(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) < 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects at least 1 argument");
+	}
+
+	// Iterate through the arguments printing them them.
+	while (!nilp(args)) {
+		switch (car(args).type) {
+		case ATOM_TYPE_STRING:
+			putstr(*car(args).value.str);
+			break;
+		default:
+			*result = nil;
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				"Don't know how to display this type of atom");
+		}
+
+		// Go to the next argument.
+		args = cdr(args);
+	}
+
+	putstr(LINEBREAK);
+	*result = nil;
+	return BAMBOO_OK;
+}
+
+// (newline) -> nil
+bamboo_error_t builtin_newline(atom_t args, atom_t *result) {
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 0) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			"This function expects no arguments");
+	}
+
+	// Print the newline string.
+	putstr(LINEBREAK);
+
+	*result = nil;
 	return BAMBOO_OK;
 }
 
