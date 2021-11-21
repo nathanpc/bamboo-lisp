@@ -117,6 +117,7 @@ bamboo_error_t builtin_builtinp(atom_t args, atom_t *result);
 bamboo_error_t builtin_closurep(atom_t args, atom_t *result);
 bamboo_error_t builtin_macrop(atom_t args, atom_t *result);
 bamboo_error_t builtin_display(atom_t args, atom_t *result);
+bamboo_error_t builtin_concat(atom_t args, atom_t *result);
 bamboo_error_t builtin_newline(atom_t args, atom_t *result);
 
 // Initialization functions.
@@ -246,6 +247,9 @@ bamboo_error_t populate_builtins(env_t *env) {
 
 	// Console I/O.
 	err = bamboo_env_set_builtin(*env, "DISPLAY", builtin_display);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, "CONCAT", builtin_concat);
 	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, "NEWLINE", builtin_newline);
@@ -2679,10 +2683,28 @@ bamboo_error_t builtin_macrop(atom_t args, atom_t *result) {
 	return BAMBOO_OK;
 }
 
-// (display any...) -> nil
+// (display any...) -> string
 bamboo_error_t builtin_display(atom_t args, atom_t *result) {
-	size_t len;
-	char *buf;
+	bamboo_error_t err;
+
+	// Use the concat function to help us out here.
+	err = builtin_concat(args, result);
+	IF_ERROR(err)
+		return err;
+
+	// Print the concatenated string.
+	putstr(*result->value.str);
+	putstr(LINEBREAK);
+
+	return BAMBOO_OK;
+}
+
+// (concat any...) -> string
+bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
+	size_t buflen = 0;
+	size_t tmplen = 0;
+	char *tmpbuf = NULL;
+	char *buf = NULL;
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 1) {
@@ -2690,53 +2712,123 @@ bamboo_error_t builtin_display(atom_t args, atom_t *result) {
 			"This function expects at least 1 argument");
 	}
 
+	// Get a clean slate.
+	buf = (char *)malloc(sizeof(char));
+	if (buf == NULL) {
+		*result = nil;
+		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+			"new string to begin concatenation");
+	}
+	buf[0] = '\0';
+
 	// Iterate through the arguments printing them them.
 	while (!nilp(args)) {
 		switch (car(args).type) {
 		case ATOM_TYPE_STRING:
-			putstr(*car(args).value.str);
+			// Get the argument string length.
+			tmpbuf = *car(args).value.str;
+			tmplen = strlen(tmpbuf);
+			buflen += tmplen;
+
+			// Reallocate the string to fit the new concatenated string.
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate string atom");
+			}
+
+			// Actually concatenate the strings.
+			strcat(buf, tmpbuf);
 			break;
 		case ATOM_TYPE_NIL:
 	        break;
 	    case ATOM_TYPE_SYMBOL:
-	        putstr(car(args).value.symbol);
+			// Get the argument string length.
+			tmplen = strlen(car(args).value.symbol);
+			buflen += tmplen;
+
+			// Reallocate the string to fit the new concatenated string.
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate symbol atom");
+			}
+
+			// Actually concatenate the strings.
+			strcat(buf, car(args).value.symbol);
 	        break;
 	    case ATOM_TYPE_INTEGER:
-			// Get the length of the string we'll need to print this number.
-	        len = snprintf(NULL, 0, "%ld", car(args).value.integer);
-			buf = (char *)malloc((len + 1) * sizeof(char));
-			if (buf == NULL) {
+			// Get the length of the string we'll need to concatenate this number.
+			tmplen = snprintf(NULL, 0, "%ld", car(args).value.integer);
+			tmpbuf = (char *)malloc((tmplen + 1) * sizeof(char));
+			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
 					"string to display integer atom");
 			}
+			sprintf(tmpbuf, "%ld", car(args).value.integer);
 
-			// Create the numeric string, print it, and free it.
-			sprintf(buf, "%ld", car(args).value.integer);
-			putstr(buf);
-			free(buf);
+			// Reallocate the string to fit the new concatenated string.
+			buflen += tmplen;
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate integer atom");
+			}
+
+			// Actually concatenate the strings and free our temporary string.
+			strcat(buf, tmpbuf);
+			free(tmpbuf);
 	        break;
 	    case ATOM_TYPE_FLOAT:
-			// Get the length of the string we'll need to print this number.
-	        len = snprintf(NULL, 0, "%g", car(args).value.dfloat);
-			buf = (char *)malloc((len + 1) * sizeof(char));
-			if (buf == NULL) {
+			// Get the length of the string we'll need to concatenate this number.
+			tmplen = snprintf(NULL, 0, "%g", car(args).value.dfloat);
+			tmpbuf = (char *)malloc((tmplen + 1) * sizeof(char));
+			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
 					"string to display float atom");
 			}
+			sprintf(tmpbuf, "%g", car(args).value.dfloat);
 
-			// Create the numeric string, print it, and free it.
-			sprintf(buf, "%g", car(args).value.dfloat);
-			putstr(buf);
-			free(buf);
+			// Reallocate the string to fit the new concatenated string.
+			buflen += tmplen;
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate float atom");
+			}
+
+			// Actually concatenate the strings and free our temporary string.
+			strcat(buf, tmpbuf);
+			free(tmpbuf);
 	        break;
 		case ATOM_TYPE_BOOLEAN:
+			// Determine the string needed to concatenate depending on value.
 			if (car(args).value.boolean) {
-				putstr("TRUE");
+				tmpbuf = strdup("TRUE");
+				tmplen = 4;
 			} else {
-				putstr("FALSE");
+				tmpbuf = strdup("FALSE");
+				tmplen = 5;
 			}
+
+			// Reallocate the string to fit the new concatenated string.
+			buflen += tmplen;
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate boolean atom");
+			}
+
+			// Actually concatenate the strings and free our temporary string.
+			strcat(buf, tmpbuf);
+			free(tmpbuf);
 			break;
 		default:
 			*result = nil;
@@ -2748,8 +2840,10 @@ bamboo_error_t builtin_display(atom_t args, atom_t *result) {
 		args = cdr(args);
 	}
 
-	putstr(LINEBREAK);
-	*result = nil;
+	// Build the string atom to return and free our building buffer.
+	*result = bamboo_string(buf);
+	free(buf);
+
 	return BAMBOO_OK;
 }
 
