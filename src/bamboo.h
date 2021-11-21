@@ -61,7 +61,7 @@ struct atom_s {
 	union {
 		pair_t *pair;
 		const char *symbol;
-		char *str;
+		char **str;
 		long integer;
 		double dfloat;
 		bool boolean;

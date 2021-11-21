@@ -46,9 +46,15 @@ typedef enum {
 	GC_TO_FREE = 0,
 	GC_IN_USE
 } gc_mark_t;
+typedef enum {
+	ALLOCATION_TYPE_PAIR = 0,
+	ALLOCATION_TYPE_STRING
+} alloc_type_t;
 typedef struct allocation_s allocation_t;
 struct allocation_s {
 	pair_t pair;
+	char *str;
+	alloc_type_t type;
 	gc_mark_t mark;
 	allocation_t *next;
 };
@@ -329,11 +335,27 @@ atom_t bamboo_boolean(bool value) {
  * @return     String atom.
  */
 atom_t bamboo_string(const char *str) {
+	allocation_t *alloc;
     atom_t atom;
+
+	// Create a new allocation.
+	alloc = (allocation_t *)malloc(sizeof(allocation_t));
+	if (alloc == NULL) {
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate structure for "
+			"garbage collector allocation tracking");
+		return nil;
+	}
+
+	// Fill up the new allocation and push the linked list forward.
+	alloc->mark = GC_TO_FREE;
+	alloc->type = ALLOCATION_TYPE_STRING;
+	alloc->str = strdup(str);
+	alloc->next = bamboo_allocations;
+	bamboo_allocations = alloc;
 
     // Create the new string atom.
     atom.type = ATOM_TYPE_STRING;
-    atom.value.str = strdup(str);
+    atom.value.str = &alloc->str;
 
     return atom;
 }
@@ -423,6 +445,7 @@ atom_t cons(atom_t _car, atom_t _cdr) {
 
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
+	alloc->type = ALLOCATION_TYPE_PAIR;
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -1632,19 +1655,22 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
 void gc_mark(atom_t root) {
 	allocation_t *alloc;
 
-	// Ignore non-"garbage collectable" types.
+	//  Get the allocation from the atom.
 	switch (root.type) {
 	case ATOM_TYPE_PAIR:
 	case ATOM_TYPE_CLOSURE:
 	case ATOM_TYPE_MACRO:
+		alloc = (allocation_t *)((size_t)root.value.pair -
+			offsetof(allocation_t, pair));
+		break;
+	case ATOM_TYPE_STRING:
+		alloc = (allocation_t *)((size_t)root.value.str -
+			offsetof(allocation_t, str));
 		break;
 	default:
+		// Ignore non-"garbage collectable" types.
 		return;
 	}
-
-	// Get the allocation from the pair.
- 	alloc = (allocation_t *)((size_t)root.value.pair -
- 		offsetof(allocation_t, pair));
 
 	// If it's already marked, then there's nothing to do.
 	if (alloc->mark == GC_IN_USE)
@@ -1677,6 +1703,8 @@ void gc(void) {
 		if (alloc->mark == GC_TO_FREE) {
 			// Free it up!
 			*tmp = alloc->next;
+			if (alloc->type == ALLOCATION_TYPE_STRING)
+				free(alloc->str);
 			free(alloc);
 
 			continue;
@@ -1723,7 +1751,7 @@ void bamboo_print_expr(atom_t atom) {
 		printf("#%c", (atom.value.boolean) ? 't' : 'f');
 		break;
 	case ATOM_TYPE_STRING:
-		printf("\"%s\"", atom.value.str);
+		printf("\"%s\"", *atom.value.str);
 		break;
     case ATOM_TYPE_PAIR:
         putchar('(');
