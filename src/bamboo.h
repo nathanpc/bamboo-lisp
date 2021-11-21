@@ -13,12 +13,19 @@
 
 // Unicode support.
 #ifdef _MSC_VER
-#define UNICODE
 #include <tchar.h>
 #else
 #define UNICODE
 #include <wchar.h>
 typedef wchar_t TCHAR;
+#endif
+
+#ifndef _T
+#ifdef UNICODE
+#define _T(x) L ## x
+#else
+#define _T(x) x
+#endif
 #endif
 
 // Global definitions.

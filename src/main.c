@@ -5,6 +5,9 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
+#ifdef _MSC_VER
+#include <windows.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -22,10 +25,22 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result);
  *
  * @return 0 if everything went fine.
  */
+#ifdef _MSC_VER
+#ifdef UNICODE
+int wmain(void) {
+#endif
+#else
 int main(void) {
+#endif
 	TCHAR *input;
 	bamboo_error_t err;
 	env_t env;
+
+#ifdef _MSC_VER
+	// Make sure we can use unicode characters inside the Windows console.
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+#endif
 
 	// Initialize the interpreter.
 	err = bamboo_init(&env);
