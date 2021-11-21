@@ -2681,6 +2681,9 @@ bamboo_error_t builtin_macrop(atom_t args, atom_t *result) {
 
 // (display any...) -> nil
 bamboo_error_t builtin_display(atom_t args, atom_t *result) {
+	size_t len;
+	char *buf;
+
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -2692,6 +2695,48 @@ bamboo_error_t builtin_display(atom_t args, atom_t *result) {
 		switch (car(args).type) {
 		case ATOM_TYPE_STRING:
 			putstr(*car(args).value.str);
+			break;
+		case ATOM_TYPE_NIL:
+	        break;
+	    case ATOM_TYPE_SYMBOL:
+	        putstr(car(args).value.symbol);
+	        break;
+	    case ATOM_TYPE_INTEGER:
+			// Get the length of the string we'll need to print this number.
+	        len = snprintf(NULL, 0, "%ld", car(args).value.integer);
+			buf = (char *)malloc((len + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"string to display integer atom");
+			}
+
+			// Create the numeric string, print it, and free it.
+			sprintf(buf, "%ld", car(args).value.integer);
+			putstr(buf);
+			free(buf);
+	        break;
+	    case ATOM_TYPE_FLOAT:
+			// Get the length of the string we'll need to print this number.
+	        len = snprintf(NULL, 0, "%g", car(args).value.dfloat);
+			buf = (char *)malloc((len + 1) * sizeof(char));
+			if (buf == NULL) {
+				*result = nil;
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"string to display float atom");
+			}
+
+			// Create the numeric string, print it, and free it.
+			sprintf(buf, "%g", car(args).value.dfloat);
+			putstr(buf);
+			free(buf);
+	        break;
+		case ATOM_TYPE_BOOLEAN:
+			if (car(args).value.boolean) {
+				putstr("TRUE");
+			} else {
+				putstr("FALSE");
+			}
 			break;
 		default:
 			*result = nil;
