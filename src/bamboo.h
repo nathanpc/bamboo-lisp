@@ -12,10 +12,9 @@
 #include <stdbool.h>
 
 // Unicode support.
-#ifdef _MSC_VER
+#ifdef _WIN32
 #include <tchar.h>
-#else
-#define UNICODE
+#elif defined(UNICODE)
 #include <wchar.h>
 typedef wchar_t TCHAR;
 #endif
