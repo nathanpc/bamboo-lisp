@@ -11,6 +11,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <float.h>
+#include <math.h>
 
 // Convinience macros.
 #define IF_ERROR(err)        if ((err) > BAMBOO_OK)
@@ -800,6 +803,20 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		// Try to parse an integer.
 		integer = _tcstoll(start, &buf, 0);
 		if (buf == end) {
+			// Check for overflows/underflows.
+			if (errno == ERANGE) {
+				*atom = nil;
+
+				if (integer == LLONG_MAX) {
+					return bamboo_error(BAMBOO_ERROR_NUM_OVERFLOW,
+						_T("An integer overflow occured while parsing"));
+				} else if (integer == LLONG_MIN) {
+					return bamboo_error(BAMBOO_ERROR_NUM_UNDERFLOW,
+						_T("An integer underflow occured while parsing"));
+				}
+			}
+
+			// Populate the atom.
 			atom->type = ATOM_TYPE_INTEGER;
 			atom->value.integer = integer;
 
@@ -809,6 +826,20 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		// Try to parse an float.
 		dfloat = _tcstold(start, &buf);
 		if (buf == end) {
+			// Check for overflows/underflows.
+			if (errno == ERANGE) {
+				*atom = nil;
+
+				if (dfloat == HUGE_VALL) {
+					return bamboo_error(BAMBOO_ERROR_NUM_OVERFLOW,
+						_T("An float overflow occured while parsing"));
+				} else if (dfloat == LDBL_MIN) {
+					return bamboo_error(BAMBOO_ERROR_NUM_UNDERFLOW,
+						_T("An float underflow occured while parsing"));
+				}
+			}
+
+			// Populate the atom.
 			atom->type = ATOM_TYPE_FLOAT;
 			atom->value.dfloat = dfloat;
 
@@ -1843,6 +1874,18 @@ void bamboo_print_error(bamboo_error_t err) {
 		break;
 	case BAMBOO_ERROR_WRONG_TYPE:
 		putstrerr(_T("WRONG TYPE ERROR: "));
+		putstrerr(bamboo_error_detail());
+		break;
+	case BAMBOO_ERROR_NUM_OVERFLOW:
+		putstrerr(_T("NUMERIC OVERFLOW ERROR: "));
+		putstrerr(bamboo_error_detail());
+		break;
+	case BAMBOO_ERROR_NUM_UNDERFLOW:
+		putstrerr(_T("NUMERIC UNDERFLOW ERROR: "));
+		putstrerr(bamboo_error_detail());
+		break;
+	case BAMBOO_ERROR_ALLOCATION:
+		putstrerr(_T("MEMORY ALLOCATION ERROR: "));
 		putstrerr(bamboo_error_detail());
 		break;
 	case BAMBOO_ERROR_UNKNOWN:

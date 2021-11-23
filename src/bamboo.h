@@ -42,6 +42,8 @@ typedef enum {
 	BAMBOO_ERROR_UNBOUND,
 	BAMBOO_ERROR_ARGUMENTS,
 	BAMBOO_ERROR_WRONG_TYPE,
+	BAMBOO_ERROR_NUM_OVERFLOW,
+	BAMBOO_ERROR_NUM_UNDERFLOW,
 	BAMBOO_ERROR_ALLOCATION,
 	BAMBOO_ERROR_UNKNOWN
 } bamboo_error_t;
@@ -117,7 +119,6 @@ atom_t bamboo_string(const TCHAR *str);
 atom_t bamboo_builtin(builtin_func_t func);
 bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 		atom_t *result);
-
 
 // Parsing and evaluation.
 bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
