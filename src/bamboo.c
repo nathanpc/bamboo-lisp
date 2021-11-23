@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <float.h>
 #include <math.h>
 
@@ -28,6 +29,28 @@
 #define strdup  _strdup
 #endif  // UNICODE
 #endif  // _MSC_VER
+
+// Some compilers (*cough* Open Watcom *cough*) forgot to implement _t variants
+// of strtoll and strtold.
+#ifndef _tcstoll
+#if defined(UNICODE) || defined(_UNICODE)
+#define _tcstoll wcstoll
+#else
+#define _tcstoll strtoll
+#endif  // UNICODE
+#endif  // _tcstoll
+#ifndef _tcstold
+#if defined(UNICODE) || defined(_UNICODE)
+#define _tcstold wcstold
+#else
+#define _tcstold strtold
+#endif  // UNICODE
+#endif  // _tcstold
+
+// HUGE_VALL is C99, so let's just make sure we have something.
+#ifndef HUGE_VALL
+#define HUGE_VALL LDBL_MAX
+#endif  // HUGE_VALL
 
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
