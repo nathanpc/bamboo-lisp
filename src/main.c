@@ -5,16 +5,6 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
-#if !defined(__WATCOMC__)
-// Make sure unicode is enabled.
-#ifndef _UNICODE
-	#define _UNICODE
-#endif  // _UNICODE
-#ifndef UNICODE
-	#define UNICODE
-#endif  // UNICODE
-#endif  // __WATCOMC__
-
 // Make sure Windows (and Open Watcom under Windows) is happy.
 #ifdef _WIN32
 #include <windows.h>
@@ -24,7 +14,16 @@
 #endif  // _O_WTEXT
 #endif  // _WIN32
 
-#include "bamboo.h"
+// Make sure unicode is enabled.
+#if !defined(__WATCOMC__)
+#ifndef _UNICODE
+#define _UNICODE
+#endif  // _UNICODE
+#ifndef UNICODE
+#define UNICODE
+#endif  // UNICODE
+#endif  // __WATCOMC__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -33,6 +32,7 @@
 #include <fcntl.h>
 #include <io.h>
 #endif // _WIN32
+#include "bamboo.h"
 
 // Private definitions.
 #define REPL_INPUT_MAX_LEN 512
@@ -72,13 +72,8 @@ int _tmain(void) {
 	// Allocate memory for the REPL input data.
 	input = (TCHAR *)malloc(sizeof(TCHAR) * (REPL_INPUT_MAX_LEN + 1));
 	if (input == NULL) {
-#ifdef UNICODE
-		fwprintf(stderr, _T("Can't allocate the input string for the REPL")
+		_ftprintf(stderr, _T("Can't allocate the input string for the REPL")
 			LINEBREAK);
-#else
-		fprintf(stderr, _T("Can't allocate the input string for the REPL")
-			LINEBREAK);
-#endif
 		return 1;
 	}
 
@@ -94,28 +89,14 @@ int _tmain(void) {
 			uint8_t spaces;
 			
 			// Show where the user was wrong.
-#ifdef UNICODE
-			wprintf(input);
-			wprintf(LINEBREAK);
-#else
-			printf(input);
-			printf(LINEBREAK);
-#endif
+			_tprintf("%s %s", input, LINEBREAK);
 			for (spaces = 0; spaces < (end - input); spaces++)
-#ifdef UNICODE
-					putwchar(_T(' '));
-				wprintf(_T("^ "));
-#else
-				putchar(_T(' '));
-			printf(_T("^ "));
-#endif
+				_puttchar(_T(' '));
+			_tprintf(_T("^ "));
+			
 			// Show the error message.
 			bamboo_print_error(err);
-#ifdef UNICODE
-			fwprintf(stderr, LINEBREAK);
-#else
-			fprintf(stderr, LINEBREAK);
-#endif
+			_ftprintf(stderr, LINEBREAK);
 
 			continue;
 		}
@@ -124,31 +105,19 @@ int _tmain(void) {
 		err = bamboo_eval_expr(parsed, env, &result);
 		if (err > BAMBOO_OK) {
 			bamboo_print_error(err);
-#ifdef UNICODE
-			fwprintf(stderr, LINEBREAK);
-#else
-			fprintf(stderr, LINEBREAK);
-#endif
+			_ftprintf(stderr, LINEBREAK);
 
 			continue;
 		}
 
 		// Print the evaluated result.
 		bamboo_print_expr(result);
-#ifdef UNICODE
-		wprintf(LINEBREAK);
-#else
-		printf(LINEBREAK);
-#endif
+		_tprintf(LINEBREAK);
 	}
 
 	// Quit.
 	free(input);
-#ifdef UNICODE
-	wprintf(_T("Bye!") LINEBREAK);
-#else
-	printf(_T("Bye!") LINEBREAK);
-#endif
+	_tprintf(_T("Bye!") LINEBREAK);
 
 	return 0;
 }
@@ -170,18 +139,10 @@ int readline(TCHAR *buf, size_t len) {
 	buf[len] = _T('\0');
 
 	// Get user input.
-#ifdef UNICODE
-	wprintf(_T("> "));
-#else
-	printf(_T("> "));
-#endif
+	_tprintf(_T("> "));
 	for (i = 0; i < len; i++) {
 		// Get character from STDIN.
-#ifdef UNICODE
-		wint_t c = getwchar();
-#else
-		int c = getchar();
-#endif
+		wint_t c = _gettchar();
 
 		switch (c) {
 		case _T('\"'):
@@ -205,11 +166,7 @@ int readline(TCHAR *buf, size_t len) {
 				goto returnstr;
 			}
 
-#ifdef UNICODE
-			wprintf(_T("  "));
-#else
-			printf(_T("  "));
-#endif
+			_tprintf(_T("  "));
 		}
 
 		// Append character to the buffer.
@@ -238,11 +195,7 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 
 	// Check if we don't have any arguments.
 	if (nilp(args)) {
-#ifdef UNICODE
-		wprintf(_T("Quitting from a custom built-in function.") LINEBREAK);
-#else
-		printf(_T("Quitting from a custom built-in function.") LINEBREAK);
-#endif
+		_tprintf(_T("Quitting from a custom built-in function.") LINEBREAK);
 		exit(0);
 	}
 
@@ -258,13 +211,8 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 		return BAMBOO_ERROR_WRONG_TYPE;
 
 	// Exit with the specified return value.
-#ifdef UNICODE
-	wprintf(_T("Quitting from a custom built-in function with return value %d.")
+	_tprintf(_T("Quitting from a custom built-in function with return value %d.")
 		   LINEBREAK, arg1.value.integer);
-#else
-	printf(_T("Quitting from a custom built-in function with return value %d.")
-		   LINEBREAK, arg1.value.integer);
-#endif
 
 	exit(arg1.value.integer);
 	return BAMBOO_OK;

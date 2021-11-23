@@ -16,14 +16,15 @@
 #define IF_ERROR(err)        if ((err) > BAMBOO_OK)
 #define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
-#ifdef _MSC_VER
+
 // Make Microsoft's compiler happy about our use of strdup and strncpy.
+#ifdef _MSC_VER
 #ifdef UNICODE
 #define strdup  _wcsdup
 #else
 #define strdup  _strdup
-#endif
-#endif
+#endif  // UNICODE
+#endif  // _MSC_VER
 
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
@@ -314,11 +315,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
     tmp = bamboo_symbol_table;
     while (!nilp(tmp)) {
         atom = car(tmp);
-#ifdef UNICODE
-		if (wcscmp(atom.value.symbol, name) == 0)
-#else
-		if (strcmp(atom.value.symbol, name) == 0)
-#endif
+		if (_tcscmp(atom.value.symbol, name) == 0)
             return atom;
 
         tmp = cdr(tmp);
@@ -701,11 +698,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
     const TCHAR *prefix = _T("()\'\"");
 
     // Skip any leading whitespace.
-#ifdef UNICODE
-    tmp += wcsspn(tmp, wspace);
-#else
-	tmp += strspn(tmp, wspace);
-#endif
+    tmp += _tcsspn(tmp, wspace);
 
     // Check if this was an empty line.
     if (tmp[0] == _T('\0')) {
@@ -719,21 +712,13 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
     token->start = tmp;
 
     // Check if the token is just a parenthesis.
-#ifdef UNICODE
-    if (wcschr(prefix, tmp[0]) != NULL) {
-#else
-	if (strchr(prefix, tmp[0]) != NULL) {
-#endif
+    if (_tcschr(prefix, tmp[0]) != NULL) {
         token->end = tmp + 1;
         return BAMBOO_OK;
     }
 
     // Find the end of the token.
-#ifdef UNICODE
-	token->end = tmp + wcscspn(tmp, delim);
-#else
-	token->end = tmp + strcspn(tmp, delim);
-#endif
+	token->end = tmp + _tcscspn(tmp, delim);
     return BAMBOO_OK;
 }
 
@@ -813,11 +798,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		double dfloat;
 
 		// Try to parse an integer.
-#ifdef UNICODE
-		integer = wcstol(start, &buf, 0);
-#else
-		integer = strtol(start, &buf, 0);
-#endif
+		integer = _tcstol(start, &buf, 0);
 		if (buf == end) {
 			atom->type = ATOM_TYPE_INTEGER;
 			atom->value.integer = integer;
@@ -826,11 +807,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		}
 
 		// Try to parse an float.
-#ifdef UNICODE
-		dfloat = wcstod(start, &buf);
-#else
-		dfloat = strtod(start, &buf);
-#endif
+		dfloat = _tcstod(start, &buf);
 		if (buf == end) {
 			atom->type = ATOM_TYPE_FLOAT;
 			atom->value.dfloat = dfloat;
@@ -850,19 +827,11 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	buftmp = buf;
 	tmp = start;
 	while (tmp != end)
-#ifdef UNICODE
-		*buftmp++ = towupper(*tmp++);
-#else
-		*buftmp++ = toupper(*tmp++);
-#endif
+		*buftmp++ = _totupper(*tmp++);
 	*buftmp = _T('\0');
 
 	// Check if we are dealing with a NIL symbol.
-#ifdef UNICODE
-	if (wcscmp(buf, _T("NIL")) == 0) {
-#else
-	if (strcmp(buf, _T("NIL")) == 0) {
-#endif
+	if (_tcscmp(buf, _T("NIL")) == 0) {
 		*atom = nil;
 	} else {
 		// Looks like a regular symbol.
@@ -1130,11 +1099,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Check if it's a special form to be evaluated.
 			if (operator.type == ATOM_TYPE_SYMBOL) {
 				// Check which special form we need to evaluate.
-#ifdef UNICODE
-				if (wcscmp(operator.value.symbol, _T("QUOTE")) == 0) {
-#else
-				if (strcmp(operator.value.symbol, _T("QUOTE")) == 0) {
-#endif
+				if (_tcscmp(operator.value.symbol, _T("QUOTE")) == 0) {
 					// Check if we have the single required arguments.
 					if (list_count(args) != 1) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1143,11 +1108,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Return the arguments without evaluating.
 					*result = car(args);
-#ifdef UNICODE
-				} else if (wcscmp(operator.value.symbol, _T("IF")) == 0) {
-#else
-				} else if (strcmp(operator.value.symbol, _T("IF")) == 0) {
-#endif
+				} else if (_tcscmp(operator.value.symbol, _T("IF")) == 0) {
 					// Check if we have the right number of arguments.
 					if (list_count(args) != 3) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1160,11 +1121,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					expr = car(args);
 					
 					continue;
-#ifdef UNICODE
-				} else if (wcscmp(operator.value.symbol, _T("DEFINE")) == 0) {
-#else
-				} else if (strcmp(operator.value.symbol, _T("DEFINE")) == 0) {
-#endif
+				} else if (_tcscmp(operator.value.symbol, _T("DEFINE")) == 0) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
@@ -1205,11 +1162,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 							_T("Argument 0 should be of type symbol or pair"));
 					}
-#ifdef UNICODE
-				} else if (wcscmp(operator.value.symbol, _T("LAMBDA")) == 0) {
-#else
-				} else if (strcmp(operator.value.symbol, _T("LAMBDA")) == 0) {
-#endif
+				} else if (_tcscmp(operator.value.symbol, _T("LAMBDA")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1218,11 +1171,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Make the closure.
 					err = bamboo_closure(env, car(args), cdr(args), result);
-#ifdef UNICODE
-				} else if (wcscmp(operator.value.symbol, _T("DEFMACRO")) == 0) {
-#else
-				} else if (strcmp(operator.value.symbol, _T("DEFMACRO")) == 0) {
-#endif
+				} else if (_tcscmp(operator.value.symbol, _T("DEFMACRO")) == 0) {
 					atom_t name;
 					atom_t macro;
 					
@@ -1257,11 +1206,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						*result = name;
 						(void)bamboo_env_set(env, name, macro);
 					}
-#ifdef UNICODE
-				} else if (wcscmp(operator.value.symbol, _T("APPLY")) == 0) {
-#else
-				} else if (strcmp(operator.value.symbol, _T("APPLY")) == 0) {
-#endif
+				} else if (_tcscmp(operator.value.symbol, _T("APPLY")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1462,11 +1407,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 
 	// Handle the apply special form.
 	if (operator.type == ATOM_TYPE_SYMBOL) {
-#ifdef UNICODE
-		if (wcscmp(operator.value.symbol, _T("APPLY")) == 0) {
-#else
-		if (strcmp(operator.value.symbol, _T("APPLY")) == 0) {
-#endif
+		if (_tcscmp(operator.value.symbol, _T("APPLY")) == 0) {
 			// Replace the current frame.
 			*stack = car(*stack);
 			*stack = new_stack_frame(*stack, *env, nil);
@@ -1553,11 +1494,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		}
 	} else if (operator.type == ATOM_TYPE_SYMBOL) {
 		// Finished working on an special form.
-#ifdef UNICODE
-		if (wcscmp(operator.value.symbol, _T("DEFINE")) == 0) {
-#else
-		if (strcmp(operator.value.symbol, _T("DEFINE")) == 0) {
-#endif
+		if (_tcscmp(operator.value.symbol, _T("DEFINE")) == 0) {
 			atom_t symbol;
 
 			symbol = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
@@ -1566,11 +1503,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 			*expr = cons(bamboo_symbol(_T("QUOTE")), cons(symbol, nil));
 			
 			return BAMBOO_OK;
-#ifdef UNICODE
-		} else if (wcscmp(operator.value.symbol, _T("IF")) == 0) {
-#else
-		} else if (strcmp(operator.value.symbol, _T("IF")) == 0) {
-#endif
+		} else if (_tcscmp(operator.value.symbol, _T("IF")) == 0) {
 			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			// Choose which path to go for an if statement.
@@ -1666,13 +1599,8 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 		TCHAR msg[ERROR_MSG_STR_LEN + 1];
 
 		// Build the error string.
-#ifdef UNICODE
-		_snwprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '%s' not found in any of the ")
+		_sntprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '%s' not found in any of the ")
 			_T("environments"), symbol.value.symbol);
-#else
-		snprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '%s' not found in any of the ")
-			_T("environments"), symbol.value.symbol);
-#endif
 		return bamboo_error(BAMBOO_ERROR_UNBOUND, msg);
 	}
 
@@ -1829,46 +1757,22 @@ void bamboo_print_expr(atom_t atom) {
         putstr(_T("nil"));
         break;
     case ATOM_TYPE_SYMBOL:
-#ifdef UNICODE
-        wprintf(_T("%s"), atom.value.symbol);
-#else
-		printf(_T("%s"), atom.value.symbol);
-#endif
+        _tprintf(_T("%s"), atom.value.symbol);
         break;
     case ATOM_TYPE_INTEGER:
-#ifdef UNICODE
-        wprintf(_T("%ld"), atom.value.integer);
-#else
-		printf(_T("%ld"), atom.value.integer);
-#endif
+        _tprintf(_T("%ld"), atom.value.integer);
         break;
     case ATOM_TYPE_FLOAT:
-#ifdef UNICODE
-        wprintf(_T("%g"), atom.value.dfloat);
-#else
-		printf(_T("%g"), atom.value.dfloat);
-#endif
+        _tprintf(_T("%g"), atom.value.dfloat);
         break;
 	case ATOM_TYPE_BOOLEAN:
-#ifdef UNICODE
-		wprintf(_T("#%c"), (atom.value.boolean) ? _T('t') : _T('f'));
-#else
-		printf(_T("#%c"), (atom.value.boolean) ? _T('t') : _T('f'));
-#endif
+		_tprintf(_T("#%c"), (atom.value.boolean) ? _T('t') : _T('f'));
 		break;
 	case ATOM_TYPE_STRING:
-#ifdef UNICODE
-		wprintf(_T("\"%s\""), *atom.value.str);
-#else
-		printf(_T("\"%s\""), *atom.value.str);
-#endif
+		_tprintf(_T("\"%s\""), *atom.value.str);
 		break;
     case ATOM_TYPE_PAIR:
-#ifdef UNICODE
-        putwchar(_T('('));
-#else
-		putchar(_T('('));
-#endif
+        _puttchar(_T('('));
         bamboo_print_expr(car(atom));
         atom = cdr(atom);
 
@@ -1876,11 +1780,7 @@ void bamboo_print_expr(atom_t atom) {
         while (!nilp(atom)) {
             // Check if we are in a list.
             if (atom.type == ATOM_TYPE_PAIR) {
-#ifdef UNICODE
-                putwchar(_T(' '));
-#else
-				putchar(_T(' '));
-#endif
+                _puttchar(_T(' '));
                 bamboo_print_expr(car(atom));
                 atom = cdr(atom);
             } else {
@@ -1890,18 +1790,10 @@ void bamboo_print_expr(atom_t atom) {
                 break;
             }
         }
-#ifdef UNICODE
-        putwchar(_T(')'));
-#else
-		putchar(_T(')'));
-#endif
+        _puttchar(_T(')'));
         break;
 	case ATOM_TYPE_BUILTIN:
-#ifdef UNICODE
-		wprintf(_T("#<BUILTIN:%p>"), atom.value.builtin);
-#else
-		printf(_T("#<BUILTIN:%p>"), atom.value.builtin);
-#endif
+		_tprintf(_T("#<BUILTIN:%p>"), atom.value.builtin);
 		break;
 	case ATOM_TYPE_CLOSURE:
 		putstr(_T("#<FUNCTION:"));
@@ -1996,11 +1888,7 @@ void bamboo_print_tokens(const TCHAR *str) {
 		buf[i] = _T('\0');
 
 		// Print the token and free the string.
-#ifdef UNICODE
-		wprintf(_T("'%s' "), buf);
-#else
-		printf(_T("'%s' "), buf);
-#endif
+		_tprintf(_T("'%s' "), buf);
 		free(buf);
 	}
 }
@@ -2026,11 +1914,7 @@ const TCHAR* bamboo_error_detail(void) {
  * @param msg Error message to be set.
  */
 void set_error_msg(const TCHAR *msg) {
-#ifdef UNICODE
-	wcsncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
-#else
-	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
-#endif
+	_tcsncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
 
 /**
@@ -2846,11 +2730,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 		case ATOM_TYPE_STRING:
 			// Get the argument string length.
 			tmpbuf = *car(args).value.str;
-#ifdef UNICODE
-			tmplen = wcslen(tmpbuf);
-#else
-			tmplen = strlen(tmpbuf);
-#endif
+			tmplen = _tcslen(tmpbuf);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
@@ -2862,21 +2742,13 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings.
-#ifdef UNICODE
-			wcscat(buf, tmpbuf);
-#else
-			strcat(buf, tmpbuf);
-#endif
+			_tcscat(buf, tmpbuf);
 			break;
 		case ATOM_TYPE_NIL:
 	        break;
 	    case ATOM_TYPE_SYMBOL:
 			// Get the argument string length.
-#ifdef UNICODE
-			tmplen = wcslen(car(args).value.symbol);
-#else
-			tmplen = strlen(car(args).value.symbol);
-#endif
+			tmplen = _tcslen(car(args).value.symbol);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
@@ -2888,30 +2760,18 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings.
-#ifdef UNICODE
-			wcscat(buf, car(args).value.symbol);
-#else
-			strcat(buf, car(args).value.symbol);
-#endif
+			_tcscat(buf, car(args).value.symbol);
 	        break;
 	    case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
-#ifdef UNICODE
-			tmplen = _snwprintf(NULL, 0, _T("%ld"), car(args).value.integer);
-#else
-			tmplen = snprintf(NULL, 0, _T("%ld"), car(args).value.integer);
-#endif
+			tmplen = _sntprintf(NULL, 0, _T("%ld"), car(args).value.integer);
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display integer atom"));
 			}
-#ifdef UNICODE
-			swprintf(tmpbuf, tmplen + 1, _T("%ld"), car(args).value.integer);
-#else
-			sprintf(tmpbuf, _T("%ld"), car(args).value.integer);
-#endif
+			_sntprintf(tmpbuf, tmplen + 1, _T("%ld"), car(args).value.integer);
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
@@ -2923,31 +2783,19 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-#ifdef UNICODE
-			wcscat(buf, tmpbuf);
-#else
-			strcat(buf, tmpbuf);
-#endif
+			_tcscat(buf, tmpbuf);
 			free(tmpbuf);
 	        break;
 	    case ATOM_TYPE_FLOAT:
 			// Get the length of the string we'll need to concatenate this number.
-#ifdef UNICODE
-			tmplen = _snwprintf(NULL, 0, _T("%g"), car(args).value.dfloat);
-#else
-			tmplen = snprintf(NULL, 0, _T("%g"), car(args).value.dfloat);
-#endif
+			tmplen = _sntprintf(NULL, 0, _T("%g"), car(args).value.dfloat);
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display float atom"));
 			}
-#ifdef UNICODE
-			swprintf(tmpbuf, tmplen + 1, _T("%g"), car(args).value.dfloat);
-#else
-			sprintf(tmpbuf, _T("%g"), car(args).value.dfloat);
-#endif
+			_sntprintf(tmpbuf, tmplen + 1, _T("%g"), car(args).value.dfloat);
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
@@ -2959,11 +2807,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-#ifdef UNICODE
-			wcscat(buf, tmpbuf);
-#else
-			strcat(buf, tmpbuf);
-#endif
+			_tcscat(buf, tmpbuf);
 			free(tmpbuf);
 	        break;
 		case ATOM_TYPE_BOOLEAN:
@@ -2980,17 +2824,14 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			buflen += tmplen;
 			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
 			if (buf == NULL) {
+
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("new string to concatenate boolean atom"));
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-#ifdef UNICODE
-			wcscat(buf, tmpbuf);
-#else
-			strcat(buf, tmpbuf);
-#endif
+			_tcscat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		default:
@@ -3055,11 +2896,7 @@ void putstr(const TCHAR *str) {
 	const TCHAR *tmp = str;
 
 	while (*tmp)
-#ifdef UNICODE
-		putwchar(*tmp++);
-#else
-		putchar(*tmp++);
-#endif
+		_puttchar(*tmp++);
 }
 
 /**
@@ -3071,9 +2908,5 @@ void putstrerr(const TCHAR *str) {
 	const TCHAR *tmp = str;
 
 	while (*tmp)
-#ifdef UNICODE
-		putwc(*tmp++, stderr);
-#else
-		putc(*tmp++, stderr);
-#endif
+		_puttc(*tmp++, stderr);
 }

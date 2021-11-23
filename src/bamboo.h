@@ -14,26 +14,23 @@
 // Unicode support.
 #ifdef _WIN32
 #include <tchar.h>
-#elif defined(UNICODE)
-#include <wchar.h>
-typedef wchar_t TCHAR;
-#endif
+#endif  // _WIN32
 
 #ifndef _T
 #ifdef UNICODE
 #define _T(x) L ## x
 #else
 #define _T(x) x
-#endif
-#endif
+#endif  // UNICODE
+#endif  // _T
 
 // Global definitions.
 #ifndef LINEBREAK
 #define LINEBREAK _T("\r\n")
-#endif
+#endif  // LINEBREAK
 #ifndef GC_ITER_COUNT_SWEEP
 #define GC_ITER_COUNT_SWEEP 10000
-#endif
+#endif  // GC_ITER_COUNT_SWEEP
 
 // Parser return values.
 typedef enum {
@@ -136,4 +133,4 @@ void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
 void bamboo_print_tokens(const TCHAR *str);
 
-#endif	// _BAMBOO_H
+#endif  // _BAMBOO_H
