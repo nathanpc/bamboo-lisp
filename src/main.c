@@ -5,24 +5,32 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
-#ifdef _WIN32
+// Make sure unicode is enabled.
+#ifndef _UNICODE
+	#define _UNICODE
+#endif  // _UNICODE
 #ifndef UNICODE
-#define UNICODE
-#endif
+	#define UNICODE
+#endif  // UNICODE
+
+// Make sure Windows (and Open Watcom under Windows) is happy.
+#ifdef _WIN32
+#include <windows.h>
+
 #ifndef _O_WTEXT
 #define _O_WTEXT 0x10000
-#endif
-#endif
+#endif  // _O_WTEXT
+#endif  // _WIN32
 
 #include "bamboo.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <locale.h>
 #ifdef _WIN32
 #include <fcntl.h>
 #include <io.h>
-#endif
-#include <locale.h>
+#endif // _WIN32
 
 // Private definitions.
 #define REPL_INPUT_MAX_LEN 512
@@ -36,11 +44,7 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result);
  *
  * @return 0 if everything went fine.
  */
-#if defined(_WIN32) && defined(UNICODE)
-int wmain(void) {
-#else
-int main(void) {
-#endif
+int _tmain(void) {
 	TCHAR *input;
 	bamboo_error_t err;
 	env_t env;
