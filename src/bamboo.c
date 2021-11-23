@@ -785,8 +785,6 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
  * @return       BAMBOO_OK if we were able to parse the token correctly.
  */
 bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
-	long long integer;
-	long double dfloat;
 	TCHAR *buf;
 	TCHAR *buftmp;
     const TCHAR *tmp;
@@ -798,19 +796,11 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		return parse_hash_expr(token, atom);
 
 	// Check if we are dealing with a number of some kind.
-	switch (start[0]) {
-	case _T('0'):
-	case _T('1'):
-	case _T('2'):
-	case _T('3'):
-	case _T('4'):
-	case _T('5'):
-	case _T('6'):
-	case _T('7'):
-	case _T('8'):
-	case _T('9'):
-	case _T('+'):
-	case _T('-'):
+	if (((start[0] >= _T('0')) && (start[0] <= _T('9'))) ||
+			(start[0] == _T('+')) || (start[0] == _T('-'))) {
+		long long integer;
+		long double dfloat;
+
 		// Try to parse an integer.
 		integer = _tcstoll(start, &buf, 0);
 		if (buf == end) {
