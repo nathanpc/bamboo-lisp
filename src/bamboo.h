@@ -75,8 +75,8 @@ struct atom_s {
 		pair_t *pair;
 		const TCHAR *symbol;
 		TCHAR **str;
-		long integer;
-		double dfloat;
+		long long integer;
+		long double dfloat;
 		bool boolean;
 		builtin_func_t builtin;
 	} value;
@@ -109,8 +109,8 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 									  builtin_func_t func);
 
 // Primitive creation.
-atom_t bamboo_int(long num);
-atom_t bamboo_float(double num);
+atom_t bamboo_int(long long num);
+atom_t bamboo_float(long double num);
 atom_t bamboo_symbol(const TCHAR *name);
 atom_t bamboo_boolean(bool value);
 atom_t bamboo_string(const TCHAR *str);

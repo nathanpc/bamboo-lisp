@@ -211,9 +211,9 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 		return BAMBOO_ERROR_WRONG_TYPE;
 
 	// Exit with the specified return value.
-	_tprintf(_T("Quitting from a custom built-in function with return value %d.")
+	_tprintf(_T("Quitting from a custom built-in function with return value %lld.")
 		   LINEBREAK, arg1.value.integer);
 
-	exit(arg1.value.integer);
+	exit((int)arg1.value.integer);
 	return BAMBOO_OK;
 }

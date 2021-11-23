@@ -275,7 +275,7 @@ bamboo_error_t populate_builtins(env_t *env) {
  * @param  num Integer number.
  * @return     Integer atom.
  */
-atom_t bamboo_int(long num) {
+atom_t bamboo_int(long long num) {
     atom_t atom;
 
     // Populate the atom.
@@ -291,7 +291,7 @@ atom_t bamboo_int(long num) {
  * @param  num Double floating-point number.
  * @return     Floating-point atom.
  */
-atom_t bamboo_float(double num) {
+atom_t bamboo_float(long double num) {
     atom_t atom;
 
     // Populate the atom.
@@ -794,11 +794,11 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 
 	// Check if we are dealing with a number of some kind.
 	if ((start[0] >= _T('0')) && (start[0] <= _T('9'))) {
-		long integer;
-		double dfloat;
+		long long integer;
+		long double dfloat;
 
 		// Try to parse an integer.
-		integer = _tcstol(start, &buf, 0);
+		integer = _tcstoll(start, &buf, 0);
 		if (buf == end) {
 			atom->type = ATOM_TYPE_INTEGER;
 			atom->value.integer = integer;
@@ -807,7 +807,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		}
 
 		// Try to parse an float.
-		dfloat = _tcstod(start, &buf);
+		dfloat = _tcstold(start, &buf);
 		if (buf == end) {
 			atom->type = ATOM_TYPE_FLOAT;
 			atom->value.dfloat = dfloat;
@@ -1760,7 +1760,7 @@ void bamboo_print_expr(atom_t atom) {
         _tprintf(_T("%s"), atom.value.symbol);
         break;
     case ATOM_TYPE_INTEGER:
-        _tprintf(_T("%ld"), atom.value.integer);
+        _tprintf(_T("%lld"), atom.value.integer);
         break;
     case ATOM_TYPE_FLOAT:
         _tprintf(_T("%g"), atom.value.dfloat);
@@ -2764,14 +2764,14 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	        break;
 	    case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
-			tmplen = _sntprintf(NULL, 0, _T("%ld"), car(args).value.integer);
+			tmplen = _sntprintf(NULL, 0, _T("%lld"), car(args).value.integer);
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display integer atom"));
 			}
-			_sntprintf(tmpbuf, tmplen + 1, _T("%ld"), car(args).value.integer);
+			_sntprintf(tmpbuf, tmplen + 1, _T("%lld"), car(args).value.integer);
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
