@@ -89,7 +89,7 @@ int _tmain(void) {
 			uint8_t spaces;
 			
 			// Show where the user was wrong.
-			_tprintf("%s %s", input, LINEBREAK);
+			_tprintf(_T("%s %s"), input, LINEBREAK);
 			for (spaces = 0; spaces < (end - input); spaces++)
 				_puttchar(_T(' '));
 			_tprintf(_T("^ "));
