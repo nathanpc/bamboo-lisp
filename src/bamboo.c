@@ -2908,7 +2908,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 					_T("string to display integer atom"));
 			}
 #ifdef UNICODE
-			swprintf(tmpbuf, tmplen, _T("%ld"), car(args).value.integer);
+			swprintf(tmpbuf, tmplen + 1, _T("%ld"), car(args).value.integer);
 #else
 			sprintf(tmpbuf, _T("%ld"), car(args).value.integer);
 #endif
@@ -2944,7 +2944,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 					_T("string to display float atom"));
 			}
 #ifdef UNICODE
-			swprintf(tmpbuf, tmplen, _T("%g"), car(args).value.dfloat);
+			swprintf(tmpbuf, tmplen + 1, _T("%g"), car(args).value.dfloat);
 #else
 			sprintf(tmpbuf, _T("%g"), car(args).value.dfloat);
 #endif
