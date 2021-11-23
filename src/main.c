@@ -5,6 +5,7 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
+#if !defined(__WATCOMC__)
 // Make sure unicode is enabled.
 #ifndef _UNICODE
 	#define _UNICODE
@@ -12,6 +13,7 @@
 #ifndef UNICODE
 	#define UNICODE
 #endif  // UNICODE
+#endif  // __WATCOMC__
 
 // Make sure Windows (and Open Watcom under Windows) is happy.
 #ifdef _WIN32
