@@ -53,6 +53,12 @@
 	#endif // _MSC_VER
 #endif  // _tcstold
 
+// Make Visual C++ 6.0 not complain about passing NULL to _sntprintf.
+#if (_MSC_VER <= 1400)
+	#define I64_MAX_DIGITS        128
+	#define LONGDOUBLE_MAX_DIGITS 128
+#endif
+
 // HUGE_VALL is C99, so let's just make sure we have something.
 #ifndef HUGE_VALL
 	#define HUGE_VALL LDBL_MAX
@@ -113,6 +119,7 @@ static uint32_t bamboo_gc_iter_counter = 0;
 // Private methods.
 void putstr(const TCHAR *str);
 void putstrerr(const TCHAR *str);
+bool contains_point(const TCHAR *str);
 bool atom_boolean_val(atom_t atom);
 void set_error_msg(const TCHAR *msg);
 void fatal_error(bamboo_error_t err, const TCHAR *msg);
@@ -827,6 +834,9 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
     const TCHAR *tmp;
 	const TCHAR *start = token->start;
 	const TCHAR *end = token->end;
+#ifndef _tcstold
+	int cret = 0;
+#endif
 
 	// Check if we are dealing with a hash expression.
 	if (start[0] == _T('#'))
@@ -840,8 +850,12 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 
 		// Try to parse an integer.
 #ifndef _tcstoi64
-		integer = _atoi64(start);
-		buf = end;
+		if (!contains_point(start)) {
+			integer = _atoi64(start);
+			buf = end;
+		} else {
+			buf = NULL;
+		}
 #else
 		integer = _tcstoll(start, &buf, 0);
 #endif  //_tcstoi64
@@ -868,8 +882,12 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 
 		// Try to parse an float.
 #ifndef _tcstold
-		_stscanf(start, "%lf", &dfloat);
-		buf = end;
+		cret = _stscanf(start, "%lg", &dfloat);
+		if ((cret != 0) && (cret != EOF)) {
+			buf = end;
+		} else {
+			buf = NULL;
+		}
 #else
 		dfloat = _tcstold(start, &buf);
 #endif  // _tcstold
@@ -1839,7 +1857,11 @@ void bamboo_print_expr(atom_t atom) {
         _tprintf(_T("%s"), atom.value.symbol);
         break;
     case ATOM_TYPE_INTEGER:
+#if (_MSC_VER <= 1400)
+        _tprintf(_T("%I64d"), atom.value.integer);
+#else
         _tprintf(_T("%lld"), atom.value.integer);
+#endif
         break;
     case ATOM_TYPE_FLOAT:
         _tprintf(_T("%g"), atom.value.dfloat);
@@ -2855,14 +2877,22 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	        break;
 	    case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
+#if (_MSC_VER <= 1400)
+			tmplen = I64_MAX_DIGITS;
+#else
 			tmplen = _sntprintf(NULL, 0, _T("%lld"), car(args).value.integer);
+#endif  // _MSC_VER
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display integer atom"));
 			}
+#if (_MSC_VER <= 1400)
+			_sntprintf(tmpbuf, tmplen + 1, _T("%I64d"), car(args).value.integer);
+#else
 			_sntprintf(tmpbuf, tmplen + 1, _T("%lld"), car(args).value.integer);
+#endif  // _MSC_VER
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
@@ -2879,7 +2909,11 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	        break;
 	    case ATOM_TYPE_FLOAT:
 			// Get the length of the string we'll need to concatenate this number.
+#if (_MSC_VER <= 1400)
+			tmplen = LONGDOUBLE_MAX_DIGITS;
+#else
 			tmplen = _sntprintf(NULL, 0, _T("%g"), car(args).value.dfloat);
+#endif  // _MSC_VER
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
 				*result = nil;
@@ -3000,4 +3034,21 @@ void putstrerr(const TCHAR *str) {
 
 	while (*tmp)
 		_puttc(*tmp++, stderr);
+}
+
+/**
+ * Checks if a string contains a point character.
+ *
+ * @param  str String to be tested.
+ * @return     TRUE if there was a point character somewhere in the string.
+ */
+bool contains_point(const TCHAR *str) {
+	const TCHAR *tmp = str;
+
+	while (*tmp) {
+		if (*tmp++ == '.')
+			return true;
+	}
+
+	return false;
 }
