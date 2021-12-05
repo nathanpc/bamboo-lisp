@@ -5,6 +5,10 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "bamboo.h"
 #include <stdlib.h>
 #include <stddef.h>
@@ -23,33 +27,39 @@
 
 // Make Microsoft's compiler happy about our use of strdup and strncpy.
 #ifdef _MSC_VER
-#ifdef UNICODE
-#define strdup  _wcsdup
-#else
-#define strdup  _strdup
-#endif  // UNICODE
+	#ifdef UNICODE
+		#define strdup  _wcsdup
+	#else
+		#define strdup  _strdup
+	#endif  // UNICODE
 #endif  // _MSC_VER
 
 // Some compilers (*cough* Open Watcom *cough*) forgot to implement _t variants
 // of strtoll and strtold.
 #ifndef _tcstoll
-#if defined(UNICODE) || defined(_UNICODE)
-#define _tcstoll wcstoll
-#else
-#define _tcstoll strtoll
-#endif  // UNICODE
+	#ifdef _MSC_VER
+		#define _tcstoll _tcstoi64
+	#else
+		#if defined(UNICODE) || defined(_UNICODE)
+			#define _tcstoll wcstoll
+		#else
+			#define _tcstoll strtoll
+		#endif  // UNICODE
+	#endif  // _MSC_VER
 #endif  // _tcstoll
 #ifndef _tcstold
-#if defined(UNICODE) || defined(_UNICODE)
-#define _tcstold wcstold
-#else
-#define _tcstold strtold
-#endif  // UNICODE
+	#ifndef _MSC_VER
+		#if defined(UNICODE) || defined(_UNICODE)
+			#define _tcstold wcstold
+		#else
+			#define _tcstold strtold
+		#endif  // UNICODE
+	#endif // _MSC_VER
 #endif  // _tcstold
 
 // HUGE_VALL is C99, so let's just make sure we have something.
 #ifndef HUGE_VALL
-#define HUGE_VALL LDBL_MAX
+	#define HUGE_VALL LDBL_MAX
 #endif  // HUGE_VALL
 
 // Private definitions.
@@ -301,7 +311,7 @@ bamboo_error_t populate_builtins(env_t *env) {
  * @param  num Integer number.
  * @return     Integer atom.
  */
-atom_t bamboo_int(long long num) {
+atom_t bamboo_int(int64_t num) {
     atom_t atom;
 
     // Populate the atom.
@@ -821,11 +831,15 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 	// Check if we are dealing with a number of some kind.
 	if (((start[0] >= _T('0')) && (start[0] <= _T('9'))) ||
 			(start[0] == _T('+')) || (start[0] == _T('-'))) {
-		long long integer;
+		int64_t integer;
 		long double dfloat;
 
 		// Try to parse an integer.
+#ifndef _tcstoi64
+		integer = _atoi64(start);
+#else
 		integer = _tcstoll(start, &buf, 0);
+#endif  //_tcstoi64
 		if (buf == end) {
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
@@ -848,7 +862,10 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		}
 
 		// Try to parse an float.
+#ifndef _tcstold
+#else
 		dfloat = _tcstold(start, &buf);
+#endif  // _tcstold
 		if (buf == end) {
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
@@ -2977,3 +2994,7 @@ void putstrerr(const TCHAR *str) {
 	while (*tmp)
 		_puttc(*tmp++, stderr);
 }
+
+#ifdef __cplusplus
+}
+#endif

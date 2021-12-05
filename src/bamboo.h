@@ -8,28 +8,32 @@
 #ifndef _BAMBOO_H
 #define _BAMBOO_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
 // Unicode support.
 #ifdef _WIN32
-#include <tchar.h>
+	#include <tchar.h>
 #endif  // _WIN32
 
 #ifndef _T
-#ifdef UNICODE
-#define _T(x) L ## x
-#else
-#define _T(x) x
-#endif  // UNICODE
+	#ifdef UNICODE
+		#define _T(x) L ## x
+	#else
+		#define _T(x) x
+	#endif  // UNICODE
 #endif  // _T
 
 // Global definitions.
 #ifndef LINEBREAK
-#define LINEBREAK _T("\r\n")
+	#define LINEBREAK _T("\r\n")
 #endif  // LINEBREAK
 #ifndef GC_ITER_COUNT_SWEEP
-#define GC_ITER_COUNT_SWEEP 10000
+	#define GC_ITER_COUNT_SWEEP 10000
 #endif  // GC_ITER_COUNT_SWEEP
 
 // Parser return values.
@@ -68,7 +72,8 @@ typedef struct atom_s atom_t;
 typedef atom_t env_t;
 
 // Built-in function prototype typedef.
-typedef bamboo_error_t (*builtin_func_t)(atom_t args, atom_t *result);
+// Template: bamboo_error_t func_builtin(atom_t args, atom_t *result);
+typedef bamboo_error_t (*builtin_func_t)(atom_t, atom_t*);
 
 // Atom structure.
 struct atom_s {
@@ -77,7 +82,7 @@ struct atom_s {
 		pair_t *pair;
 		const TCHAR *symbol;
 		TCHAR **str;
-		long long integer;
+		int64_t integer;
 		long double dfloat;
 		bool boolean;
 		builtin_func_t builtin;
@@ -111,7 +116,7 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 									  builtin_func_t func);
 
 // Primitive creation.
-atom_t bamboo_int(long long num);
+atom_t bamboo_int(int64_t num);
 atom_t bamboo_float(long double num);
 atom_t bamboo_symbol(const TCHAR *name);
 atom_t bamboo_boolean(bool value);
@@ -133,5 +138,9 @@ bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg);
 void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
 void bamboo_print_tokens(const TCHAR *str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // _BAMBOO_H
