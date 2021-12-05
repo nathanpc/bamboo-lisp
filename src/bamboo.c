@@ -5,10 +5,6 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "bamboo.h"
 #include <stdlib.h>
 #include <stddef.h>
@@ -61,6 +57,14 @@ extern "C" {
 #ifndef HUGE_VALL
 	#define HUGE_VALL LDBL_MAX
 #endif  // HUGE_VALL
+
+// Make Microsoft's Visual C++ 6.0 happy about our limits.
+#ifndef LLONG_MAX
+	#define LLONG_MAX _I64_MAX
+#endif  // LLONG_MAX
+#ifndef LLONG_MIN
+	#define LLONG_MIN _I64_MIN
+#endif  // LLONG_MIN
 
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
@@ -837,6 +841,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		// Try to parse an integer.
 #ifndef _tcstoi64
 		integer = _atoi64(start);
+		buf = end;
 #else
 		integer = _tcstoll(start, &buf, 0);
 #endif  //_tcstoi64
@@ -863,6 +868,8 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 
 		// Try to parse an float.
 #ifndef _tcstold
+		_stscanf(start, "%lf", &dfloat);
+		buf = end;
 #else
 		dfloat = _tcstold(start, &buf);
 #endif  // _tcstold
@@ -1161,17 +1168,17 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Literals always evaluate to themselves.
 			*result = expr;
 		} else {
-			atom_t operator;
+			atom_t op;
 			atom_t args;
 			
-			// Get the operator and its arguments.
-			operator = car(expr);
+			// Get the op and its arguments.
+			op = car(expr);
 			args = cdr(expr);
 
 			// Check if it's a special form to be evaluated.
-			if (operator.type == ATOM_TYPE_SYMBOL) {
+			if (op.type == ATOM_TYPE_SYMBOL) {
 				// Check which special form we need to evaluate.
-				if (_tcscmp(operator.value.symbol, _T("QUOTE")) == 0) {
+				if (_tcscmp(op.value.symbol, _T("QUOTE")) == 0) {
 					// Check if we have the single required arguments.
 					if (list_count(args) != 1) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1180,7 +1187,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Return the arguments without evaluating.
 					*result = car(args);
-				} else if (_tcscmp(operator.value.symbol, _T("IF")) == 0) {
+				} else if (_tcscmp(op.value.symbol, _T("IF")) == 0) {
 					// Check if we have the right number of arguments.
 					if (list_count(args) != 3) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1189,11 +1196,11 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Place it in the stack for later evaluation.
 					stack = new_stack_frame(stack, env, cdr(args));
-					list_set(stack, STACK_EVAL_OP_INDEX, operator);
+					list_set(stack, STACK_EVAL_OP_INDEX, op);
 					expr = car(args);
 					
 					continue;
-				} else if (_tcscmp(operator.value.symbol, _T("DEFINE")) == 0) {
+				} else if (_tcscmp(op.value.symbol, _T("DEFINE")) == 0) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
@@ -1208,7 +1215,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					case ATOM_TYPE_SYMBOL:
 						// Defining a simple symbol.
 						stack = new_stack_frame(stack, env, nil);
-						list_set(stack, STACK_EVAL_OP_INDEX, operator);
+						list_set(stack, STACK_EVAL_OP_INDEX, op);
 						list_set(stack, STACK_EVAL_ARGS_INDEX, symbol);
 						expr = car(cdr(args));
 						continue;
@@ -1234,7 +1241,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 							_T("Argument 0 should be of type symbol or pair"));
 					}
-				} else if (_tcscmp(operator.value.symbol, _T("LAMBDA")) == 0) {
+				} else if (_tcscmp(op.value.symbol, _T("LAMBDA")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1243,7 +1250,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Make the closure.
 					err = bamboo_closure(env, car(args), cdr(args), result);
-				} else if (_tcscmp(operator.value.symbol, _T("DEFMACRO")) == 0) {
+				} else if (_tcscmp(op.value.symbol, _T("DEFMACRO")) == 0) {
 					atom_t name;
 					atom_t macro;
 					
@@ -1278,7 +1285,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						*result = name;
 						(void)bamboo_env_set(env, name, macro);
 					}
-				} else if (_tcscmp(operator.value.symbol, _T("APPLY")) == 0) {
+				} else if (_tcscmp(op.value.symbol, _T("APPLY")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1287,20 +1294,20 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Evaluate the apply by the magic of the stack.
 					stack = new_stack_frame(stack, env, cdr(args));
-					list_set(stack, STACK_EVAL_OP_INDEX, operator);
+					list_set(stack, STACK_EVAL_OP_INDEX, op);
 					expr = car(args);
 					continue;
 				} else {
 					goto push;
 				}
-			} else if (operator.type == ATOM_TYPE_BUILTIN) {
+			} else if (op.type == ATOM_TYPE_BUILTIN) {
 				// Execute a built-in function.
-				err = (*operator.value.builtin)(args, result);
+				err = (*op.value.builtin)(args, result);
 			} else {
 				// Handle a closure or macro.
 push:
 				stack = new_stack_frame(stack, env, args);
-				expr = operator;
+				expr = op;
 				continue;
 			}
 		}
@@ -1393,7 +1400,7 @@ bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env) {
  * @see https://lwh.jp/lisp/continuations.html
  */
 bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
-	atom_t operator;
+	atom_t op;
 	atom_t args;
 	atom_t arg_names;
 	atom_t body;
@@ -1403,14 +1410,14 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
 	if (!nilp(body))
 		return eval_expr_exec(stack, expr, env);
 
-	// Get the operator and function arguments from the stack frame.
-	operator = list_ref(*stack, STACK_EVAL_OP_INDEX);
+	// Get the op and function arguments from the stack frame.
+	op = list_ref(*stack, STACK_EVAL_OP_INDEX);
 	args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 
 	// Get all of the parameters from the stack frame.
-	*env = bamboo_env_new(car(operator));
-	arg_names = car(cdr(operator));
-	body = cdr(cdr(operator));
+	*env = bamboo_env_new(car(op));
+	arg_names = car(cdr(op));
+	body = cdr(cdr(op));
 	list_set(*stack, STACK_ENV_INDEX, *env);
 	list_set(*stack, STACK_BODY_INDEX, body);
 
@@ -1464,11 +1471,11 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
  * @see https://lwh.jp/lisp/continuations.html
  */
 bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
-	atom_t operator;
+	atom_t op;
 	atom_t args;
 
-	// Get the operator and arguments from the stack frame.
-	operator = list_ref(*stack, STACK_EVAL_OP_INDEX);
+	// Get the op and arguments from the stack frame.
+	op = list_ref(*stack, STACK_EVAL_OP_INDEX);
 	args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 
 	// Reverse the arguments if we have any.
@@ -1478,12 +1485,12 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 	}
 
 	// Handle the apply special form.
-	if (operator.type == ATOM_TYPE_SYMBOL) {
-		if (_tcscmp(operator.value.symbol, _T("APPLY")) == 0) {
+	if (op.type == ATOM_TYPE_SYMBOL) {
+		if (_tcscmp(op.value.symbol, _T("APPLY")) == 0) {
 			// Replace the current frame.
 			*stack = car(*stack);
 			*stack = new_stack_frame(*stack, *env, nil);
-			operator = car(args);
+			op = car(args);
 			args = car(cdr(args));
 
 			// Check if we actually have an arguments list.
@@ -1493,21 +1500,21 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 			}
 
 			// Go to the next one.
-			list_set(*stack, STACK_EVAL_OP_INDEX, operator);
+			list_set(*stack, STACK_EVAL_OP_INDEX, op);
 			list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
 		}
 	}
 
 	// Handle built-ins.
-	if (operator.type == ATOM_TYPE_BUILTIN) {
+	if (op.type == ATOM_TYPE_BUILTIN) {
 		*stack = car(*stack);
-		*expr = cons(operator, args);
+		*expr = cons(op, args);
 	
 		return BAMBOO_OK;
-	} else if (operator.type != ATOM_TYPE_CLOSURE) {
+	} else if (op.type != ATOM_TYPE_CLOSURE) {
 		// Looks like we don't have anything that's _T("apply")able.
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-			_T("Applyable operator must be either a built-in or a closure"));
+			_T("Applyable op must be either a built-in or a closure"));
 	}
 
 	return eval_expr_bind(stack, expr, env);
@@ -1515,7 +1522,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 
 /**
  * Once an expression has been evaluated, this function is responsible for
- * storing the result, which is either an operator, an argument, or an
+ * storing the result, which is either an op, an argument, or an
  * intermediate body expression, and fetching the next expression to evaluate.
  *
  * To be honest I have no clue how this whole thing is working, I just want to
@@ -1533,13 +1540,13 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
  */
 bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		atom_t *result) {
-	atom_t operator;
+	atom_t op;
 	atom_t args;
 	atom_t body;
 
 	// Gets the parameters from the stack frame.
 	*env = list_ref(*stack, STACK_ENV_INDEX);
-	operator = list_ref(*stack, STACK_EVAL_OP_INDEX);
+	op = list_ref(*stack, STACK_EVAL_OP_INDEX);
 	body = list_ref(*stack, STACK_BODY_INDEX);
 
 	// Check if we are still running a procedure. If so, just ignore the result.
@@ -1547,26 +1554,26 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		return eval_expr_apply(stack, expr, env);
 
 	// Check in which phase of evaluation we are currently at.
-	if (nilp(operator)) {
-		// Finished evaluating operator.
-		operator = *result;
-		list_set(*stack, STACK_EVAL_OP_INDEX, operator);
+	if (nilp(op)) {
+		// Finished evaluating op.
+		op = *result;
+		list_set(*stack, STACK_EVAL_OP_INDEX, op);
 
 		// Are we doing a macro?
-		if (operator.type == ATOM_TYPE_MACRO) {
+		if (op.type == ATOM_TYPE_MACRO) {
 			// Don't evaluate macro arguments.
 			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 			
 			*stack = new_stack_frame(*stack, *env, nil);
-			operator.type = ATOM_TYPE_CLOSURE;
-			list_set(*stack, STACK_EVAL_OP_INDEX, operator);
+			op.type = ATOM_TYPE_CLOSURE;
+			list_set(*stack, STACK_EVAL_OP_INDEX, op);
 			list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
 			
 			return eval_expr_bind(stack, expr, env);
 		}
-	} else if (operator.type == ATOM_TYPE_SYMBOL) {
+	} else if (op.type == ATOM_TYPE_SYMBOL) {
 		// Finished working on an special form.
-		if (_tcscmp(operator.value.symbol, _T("DEFINE")) == 0) {
+		if (_tcscmp(op.value.symbol, _T("DEFINE")) == 0) {
 			atom_t symbol;
 
 			symbol = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
@@ -1575,7 +1582,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 			*expr = cons(bamboo_symbol(_T("QUOTE")), cons(symbol, nil));
 			
 			return BAMBOO_OK;
-		} else if (_tcscmp(operator.value.symbol, _T("IF")) == 0) {
+		} else if (_tcscmp(op.value.symbol, _T("IF")) == 0) {
 			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			// Choose which path to go for an if statement.
@@ -1590,7 +1597,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		} else {
 			goto store_argument;
 		}
-	} else if (operator.type == ATOM_TYPE_MACRO) {
+	} else if (op.type == ATOM_TYPE_MACRO) {
 		// Finished evaluating macro.
 		*expr = *result;
 		*stack = car(*stack);
@@ -2994,7 +3001,3 @@ void putstrerr(const TCHAR *str) {
 	while (*tmp)
 		_puttc(*tmp++, stderr);
 }
-
-#ifdef __cplusplus
-}
-#endif

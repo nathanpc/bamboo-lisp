@@ -25,7 +25,7 @@ extern "C" {
 		#define _T(x) L ## x
 	#else
 		#define _T(x) x
-	#endif  // UNICODE
+	#endif  // UNICODES
 #endif  // _T
 
 // Global definitions.
