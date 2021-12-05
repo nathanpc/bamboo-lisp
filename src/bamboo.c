@@ -119,6 +119,7 @@ static uint32_t bamboo_gc_iter_counter = 0;
 // Private methods.
 void putstr(const TCHAR *str);
 void putstrerr(const TCHAR *str);
+TCHAR* strcpyse(const TCHAR *start, const TCHAR *end);
 bool contains_point(const TCHAR *str);
 bool atom_boolean_val(atom_t atom);
 void set_error_msg(const TCHAR *msg);
@@ -848,17 +849,31 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		int64_t integer;
 		long double dfloat;
 
+#if (_MSC_VER <= 1400)
+		// Create a string with only the number.
+		buf = strcpyse(start, end);
+
+		// Check if we just have a simple + or - function call.
+		if (((buf[0] == _T('+')) || (buf[0] == _T('-'))) &&
+				(buf[1] == _T('\0'))) {
+			goto symbolparser;
+		}
+#endif  // _MSC_VER
+
 		// Try to parse an integer.
-#ifndef _tcstoi64
-		if (!contains_point(start)) {
-			integer = _atoi64(start);
+#if (_MSC_VER <= 1400)
+		if (!contains_point(buf)) {
+			integer = _atoi64(buf);
+
+			free(buf);
 			buf = end;
 		} else {
+			free(buf);
 			buf = NULL;
 		}
 #else
 		integer = _tcstoll(start, &buf, 0);
-#endif  //_tcstoi64
+#endif  // _MSC_VER
 		if (buf == end) {
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
@@ -913,6 +928,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		}
 	}
 
+symbolparser:
 	// Allocate string for symbol upper-case conversion.
 	buf = (TCHAR *)malloc(sizeof(TCHAR) * (end - start + 1));
 	if (buf == NULL) {
@@ -3034,6 +3050,39 @@ void putstrerr(const TCHAR *str) {
 
 	while (*tmp)
 		_puttc(*tmp++, stderr);
+}
+
+/**
+ * Copies a string from start to a a specific end pointer appending the NULL
+ * terminator.
+ *
+ * @param  start Pointer to the beginning of the string.
+ * @param  end   Pointer to the end of the string.
+ * @return       Newly allocated and copied string. Remember to free it!
+ */
+TCHAR* strcpyse(const TCHAR *start, const TCHAR *end) {
+	TCHAR *buf;
+	TCHAR *tmp_buf;
+	const TCHAR *tmp_start;
+	size_t len = end - start;
+
+	// Allocate space for the string.
+	buf = (TCHAR *)malloc((len + 1) * sizeof(TCHAR));
+	if (buf == NULL) {
+		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate string for ")
+			_T("string start and end copying"));
+		return NULL;
+	}
+
+	// Copy just part of the string.
+	tmp_buf = buf;
+	tmp_start = start;
+	while (tmp_start != end) {
+		*tmp_buf++ = *tmp_start++;
+	}
+	*tmp_buf = _T('\0');
+
+	return buf;
 }
 
 /**
