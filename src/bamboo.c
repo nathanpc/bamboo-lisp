@@ -125,7 +125,7 @@ bool atom_boolean_val(atom_t atom);
 void set_error_msg(const TCHAR *msg);
 void fatal_error(bamboo_error_t err, const TCHAR *msg);
 void gc_mark(atom_t root);
-void gc(void);
+void gc(bool respect_marks);
 uint16_t list_count(atom_t list);
 atom_t list_ref(atom_t list, uint16_t index);
 void list_set(atom_t list, uint16_t index, atom_t value);
@@ -203,6 +203,17 @@ bamboo_error_t bamboo_init(env_t *env) {
 	IF_ERROR(err)
 		return err;
 
+	return BAMBOO_OK;
+}
+
+/**
+ * Destroys an Bamboo interpreter environment.
+ *
+ * @param  env Pointer to the root environment of the interpreter.
+ * @return     BAMBOO_OK if everything went fine.
+ */
+bamboo_error_t bamboo_destroy(env_t *env) {
+	gc(false);
 	return BAMBOO_OK;
 }
 
@@ -358,6 +369,7 @@ atom_t bamboo_float(long double num) {
 atom_t bamboo_symbol(const TCHAR *name) {
     atom_t atom;
     atom_t tmp;
+	allocation_t *alloc;
 
     // Check if the symbol already exists in the symbol table.
     tmp = bamboo_symbol_table;
@@ -369,9 +381,24 @@ atom_t bamboo_symbol(const TCHAR *name) {
         tmp = cdr(tmp);
     }
 
+	// Create a new allocation for the symbol name.
+	alloc = (allocation_t *)malloc(sizeof(allocation_t));
+	if (alloc == NULL) {
+		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate structure for ")
+			_T("garbage collector symbol allocation tracking"));
+		return nil;
+	}
+
+	// Fill up the new allocation and push the linked list forward.
+	alloc->mark = GC_TO_FREE;
+	alloc->type = ALLOCATION_TYPE_STRING;
+	alloc->str = strdup(name);
+	alloc->next = bamboo_allocations;
+	bamboo_allocations = alloc;
+
     // Create the new symbol atom.
     atom.type = ATOM_TYPE_SYMBOL;
-    atom.value.symbol = strdup(name);
+    atom.value.symbol = alloc->str;
 
     // Prepend the symbol atom to the symbol table and return the atom.
     bamboo_symbol_table = cons(atom, bamboo_symbol_table);
@@ -408,7 +435,7 @@ atom_t bamboo_string(const TCHAR *str) {
 	alloc = (allocation_t *)malloc(sizeof(allocation_t));
 	if (alloc == NULL) {
 		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate structure for ")
-			_T("garbage collector allocation tracking"));
+			_T("garbage collector string allocation tracking"));
 		return nil;
 	}
 
@@ -1190,7 +1217,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			gc_mark(stack);
 
 			// Collect the garbage and reset the iteration counter.
-			gc();
+			gc(true);
 			bamboo_gc_iter_counter = 0;
 		}
 		
@@ -1778,10 +1805,10 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Marks a whole tree of pairs as _T("in use") so that the garbage collector won't
+ * Marks a whole tree of pairs as "in use" so that the garbage collector won't
  * free them up.
  *
- * @param root Root of the pair tree to be marked as _T("in use").
+ * @param root Root of the pair tree to be marked as "in use".
  */
 void gc_mark(atom_t root) {
 	allocation_t *alloc;
@@ -1794,12 +1821,16 @@ void gc_mark(atom_t root) {
 		alloc = (allocation_t *)((size_t)root.value.pair -
 			offsetof(allocation_t, pair));
 		break;
+	case ATOM_TYPE_SYMBOL:
+		alloc = (allocation_t *)((size_t)root.value.symbol -
+			offsetof(allocation_t, str));
+		break;
 	case ATOM_TYPE_STRING:
 		alloc = (allocation_t *)((size_t)root.value.str -
 			offsetof(allocation_t, str));
 		break;
 	default:
-		// Ignore non-_T("garbage collectable") types.
+		// Ignore non-"garbage collectable" types.
 		return;
 	}
 
@@ -1807,23 +1838,27 @@ void gc_mark(atom_t root) {
 	if (alloc->mark == GC_IN_USE)
 		return;
 
-	// Mark it as _T("in use").
+	// Mark it as "in use".
 	alloc->mark = GC_IN_USE;
 
-	// Traverse the pair marking everything as _T("in use").
+	// Traverse the pair marking everything as "in use".
 	gc_mark(car(root));
 	gc_mark(cdr(root));
 }
 
 /**
  * Go through the allocation linked list collecting the garbage.
+ *
+ * @param respect_marks Should we respect the "in use" marks in allocations? If
+ *                      set to FALSE this will deallocate everything.
  */
-void gc(void) {
+void gc(bool respect_marks) {
 	allocation_t *alloc;
 	allocation_t **tmp;
 
 	// Make sure we don't trash our global symbols list.
-	gc_mark(bamboo_symbol_table);
+	if (respect_marks)
+		gc_mark(bamboo_symbol_table);
 
 	// Free up all unmarked allocations.
 	tmp = &bamboo_allocations;
@@ -1831,7 +1866,7 @@ void gc(void) {
 		alloc = *tmp;
 
 		// Check if it's marked to be freed.
-		if (alloc->mark == GC_TO_FREE) {
+		if ((alloc->mark == GC_TO_FREE) | !respect_marks) {
 			// Free it up!
 			*tmp = alloc->next;
 			if (alloc->type == ALLOCATION_TYPE_STRING)

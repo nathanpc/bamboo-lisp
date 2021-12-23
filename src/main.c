@@ -116,10 +116,11 @@ int _tmain(void) {
 	}
 
 	// Quit.
+	err = bamboo_destroy(&env);
 	free(input);
 	_tprintf(_T("Bye!") LINEBREAK);
 
-	return 0;
+	return err;
 }
 
 /**
@@ -214,6 +215,7 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 	_tprintf(_T("Quitting from a custom built-in function with return value %lld.")
 		   LINEBREAK, arg1.value.integer);
 
+	bamboo_destroy(NULL);
 	exit((int)arg1.value.integer);
 	return BAMBOO_OK;
 }

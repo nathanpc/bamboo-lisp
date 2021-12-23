@@ -105,8 +105,9 @@ atom_t cons(atom_t _car, atom_t _cdr);
 bool listp(atom_t expr);
 bamboo_error_t apply(atom_t func, atom_t args, atom_t *result);
 
-// Initialization.
+// Initialization and destruction.
 bamboo_error_t bamboo_init(env_t *env);
+bamboo_error_t bamboo_destroy(env_t *env);
 
 // Environment.
 env_t bamboo_env_new(env_t parent);
