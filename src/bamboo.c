@@ -375,7 +375,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
     tmp = bamboo_symbol_table;
     while (!nilp(tmp)) {
         atom = car(tmp);
-		if (_tcscmp(atom.value.symbol, name) == 0)
+		if (_tcscmp(*atom.value.symbol, name) == 0)
             return atom;
 
         tmp = cdr(tmp);
@@ -398,7 +398,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
 
     // Create the new symbol atom.
     atom.type = ATOM_TYPE_SYMBOL;
-    atom.value.symbol = alloc->str;
+	atom.value.symbol = &alloc->str;
 
     // Prepend the symbol atom to the symbol table and return the atom.
     bamboo_symbol_table = cons(atom, bamboo_symbol_table);
@@ -1239,7 +1239,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Check if it's a special form to be evaluated.
 			if (op.type == ATOM_TYPE_SYMBOL) {
 				// Check which special form we need to evaluate.
-				if (_tcscmp(op.value.symbol, _T("QUOTE")) == 0) {
+				if (_tcscmp(*op.value.symbol, _T("QUOTE")) == 0) {
 					// Check if we have the single required arguments.
 					if (list_count(args) != 1) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1248,7 +1248,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Return the arguments without evaluating.
 					*result = car(args);
-				} else if (_tcscmp(op.value.symbol, _T("IF")) == 0) {
+				} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
 					// Check if we have the right number of arguments.
 					if (list_count(args) != 3) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1261,7 +1261,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					expr = car(args);
 					
 					continue;
-				} else if (_tcscmp(op.value.symbol, _T("DEFINE")) == 0) {
+				} else if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
@@ -1302,7 +1302,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 							_T("Argument 0 should be of type symbol or pair"));
 					}
-				} else if (_tcscmp(op.value.symbol, _T("LAMBDA")) == 0) {
+				} else if (_tcscmp(*op.value.symbol, _T("LAMBDA")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1311,7 +1311,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Make the closure.
 					err = bamboo_closure(env, car(args), cdr(args), result);
-				} else if (_tcscmp(op.value.symbol, _T("DEFMACRO")) == 0) {
+				} else if (_tcscmp(*op.value.symbol, _T("DEFMACRO")) == 0) {
 					atom_t name;
 					atom_t macro;
 					
@@ -1346,7 +1346,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						*result = name;
 						(void)bamboo_env_set(env, name, macro);
 					}
-				} else if (_tcscmp(op.value.symbol, _T("APPLY")) == 0) {
+				} else if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1547,7 +1547,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 
 	// Handle the apply special form.
 	if (op.type == ATOM_TYPE_SYMBOL) {
-		if (_tcscmp(op.value.symbol, _T("APPLY")) == 0) {
+		if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
 			// Replace the current frame.
 			*stack = car(*stack);
 			*stack = new_stack_frame(*stack, *env, nil);
@@ -1634,7 +1634,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		}
 	} else if (op.type == ATOM_TYPE_SYMBOL) {
 		// Finished working on an special form.
-		if (_tcscmp(op.value.symbol, _T("DEFINE")) == 0) {
+		if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
 			atom_t symbol;
 
 			symbol = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
@@ -1643,7 +1643,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 			*expr = cons(bamboo_symbol(_T("QUOTE")), cons(symbol, nil));
 			
 			return BAMBOO_OK;
-		} else if (_tcscmp(op.value.symbol, _T("IF")) == 0) {
+		} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
 			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			// Choose which path to go for an if statement.
@@ -1722,10 +1722,11 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 	while (!nilp(current)) {
 		// Get symbol-value pair.
 		atom_t item = car(current);
+		atom_t name = car(item);
 
 		// Take advantage of the fact we can't have different symbols with same
 		// name to compare them by pointer instead of having to do strcmp.
-		if (car(item).value.symbol == symbol.value.symbol) {
+		if (*name.value.symbol == *symbol.value.symbol) {
 			*atom = cdr(item);
 			return BAMBOO_OK;
 		}
@@ -1740,7 +1741,7 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 
 		// Build the error string.
 		_sntprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '%s' not found in any of the ")
-			_T("environments"), symbol.value.symbol);
+			_T("environments"), *symbol.value.symbol);
 		return bamboo_error(BAMBOO_ERROR_UNBOUND, msg);
 	}
 
@@ -1766,9 +1767,10 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
 	while (!nilp(current)) {
 		// Get a symbol from the list.
 		item = car(current);
+		atom_t name = car(item);
 
 		// Check if the symbol matches another one in the environment.
-		if (car(item).value.symbol == symbol.value.symbol) {
+		if (*name.value.symbol == *symbol.value.symbol) {
 			cdr(item) = value;
 			return BAMBOO_OK;
 		}
@@ -1905,7 +1907,7 @@ void bamboo_print_expr(atom_t atom) {
         putstr(_T("nil"));
         break;
     case ATOM_TYPE_SYMBOL:
-        _tprintf(_T("%s"), atom.value.symbol);
+        _tprintf(_T("%s"), *atom.value.symbol);
         break;
     case ATOM_TYPE_INTEGER:
 #if (_MSC_VER <= 1400)
@@ -2710,7 +2712,7 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 		*result = bamboo_boolean(a.value.pair == b.value.pair);
 		break;
 	case ATOM_TYPE_SYMBOL:
-		*result = bamboo_boolean(a.value.symbol == b.value.symbol);
+		*result = bamboo_boolean(*a.value.symbol == *b.value.symbol);
 		break;
 	case ATOM_TYPE_BOOLEAN:
 		*result = bamboo_boolean(a.value.boolean == b.value.boolean);
@@ -2912,7 +2914,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	        break;
 	    case ATOM_TYPE_SYMBOL:
 			// Get the argument string length.
-			tmplen = _tcslen(car(args).value.symbol);
+			tmplen = _tcslen(*car(args).value.symbol);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
@@ -2924,7 +2926,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings.
-			_tcscat(buf, car(args).value.symbol);
+			_tcscat(buf, *car(args).value.symbol);
 	        break;
 	    case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.

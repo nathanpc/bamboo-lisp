@@ -190,6 +190,7 @@ returnstr:
  */
 bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 	atom_t arg1;
+	int retval = 0;
 
 	// Just set the return to nil since we wont use it.
 	*result = nil;
@@ -197,7 +198,9 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 	// Check if we don't have any arguments.
 	if (nilp(args)) {
 		_tprintf(_T("Quitting from a custom built-in function.") LINEBREAK);
-		exit(0);
+		retval = 0;
+
+		goto destroy;
 	}
 
 	// Check if we have more than a single argument.
@@ -214,8 +217,10 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 	// Exit with the specified return value.
 	_tprintf(_T("Quitting from a custom built-in function with return value %lld.")
 		   LINEBREAK, arg1.value.integer);
+	retval = (int)arg1.value.integer;
 
+destroy:
 	bamboo_destroy(NULL);
-	exit((int)arg1.value.integer);
+	exit(retval);
 	return BAMBOO_OK;
 }

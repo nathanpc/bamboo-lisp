@@ -80,7 +80,7 @@ struct atom_s {
 	atom_type_t type;
 	union {
 		pair_t *pair;
-		const TCHAR *symbol;
+		TCHAR **symbol;
 		TCHAR **str;
 		int64_t integer;
 		long double dfloat;
