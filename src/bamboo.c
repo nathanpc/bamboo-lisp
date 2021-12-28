@@ -1722,11 +1722,10 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 	while (!nilp(current)) {
 		// Get symbol-value pair.
 		atom_t item = car(current);
-		atom_t name = car(item);
 
 		// Take advantage of the fact we can't have different symbols with same
 		// name to compare them by pointer instead of having to do strcmp.
-		if (*name.value.symbol == *symbol.value.symbol) {
+		if (*car(item).value.symbol == *symbol.value.symbol) {
 			*atom = cdr(item);
 			return BAMBOO_OK;
 		}
@@ -1767,10 +1766,9 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
 	while (!nilp(current)) {
 		// Get a symbol from the list.
 		item = car(current);
-		atom_t name = car(item);
 
 		// Check if the symbol matches another one in the environment.
-		if (*name.value.symbol == *symbol.value.symbol) {
+		if (*car(item).value.symbol == *symbol.value.symbol) {
 			cdr(item) = value;
 			return BAMBOO_OK;
 		}
