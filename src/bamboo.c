@@ -1969,57 +1969,72 @@ void bamboo_print_expr(atom_t atom) {
 }
 
 /**
+ * Gets the error type string given an error code.
+ *
+ * @param buf Pointer to a string that will be allocated by this function which
+ *            will return the error type string. NOTE: Remember that you're
+ *            responsible for freeing this pointer later.
+ * @param err Error code.
+ */
+void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err) {
+	// Get the error type string.
+	switch (err) {
+	case BAMBOO_OK:
+		*buf = strdup(_T("OK"));
+		break;
+	case BAMBOO_PAREN_END:
+		*buf = strdup(_T("PARENTHESIS ENDED"));
+		break;
+	case BAMBOO_ERROR_SYNTAX:
+		*buf = strdup(_T("SYNTAX ERROR"));
+		break;
+	case BAMBOO_ERROR_UNBOUND:
+		*buf = strdup(_T("UNBOUND SYMBOL ERROR"));
+		break;
+	case BAMBOO_ERROR_ARGUMENTS:
+		*buf = strdup(_T("INCORRECT ARGUMENT ERROR"));
+		break;
+	case BAMBOO_ERROR_WRONG_TYPE:
+		*buf = strdup(_T("WRONG TYPE ERROR"));
+		break;
+	case BAMBOO_ERROR_NUM_OVERFLOW:
+		*buf = strdup(_T("NUMERIC OVERFLOW ERROR"));
+		break;
+	case BAMBOO_ERROR_NUM_UNDERFLOW:
+		*buf = strdup(_T("NUMERIC UNDERFLOW ERROR"));
+		break;
+	case BAMBOO_ERROR_ALLOCATION:
+		*buf = strdup(_T("MEMORY ALLOCATION ERROR"));
+		break;
+	case BAMBOO_ERROR_UNKNOWN:
+		*buf = strdup(_T("UNKNOWN ERROR"));
+		break;
+	default:
+		*buf = strdup(_T("I have no clue why you're here, because you ")
+			_T("shouldn't"));
+		break;
+	}
+}
+
+/**
  * Prints the appropriate error message for a given error code.
  *
  * @param err Error code to print the message.
  */
 void bamboo_print_error(bamboo_error_t err) {
-	switch (err) {
-	case BAMBOO_OK:
-		putstrerr(_T("OK"));
-		break;
-	case BAMBOO_PAREN_END:
-		putstrerr(_T("PARENTHESIS ENDED"));
-		break;
-	case BAMBOO_ERROR_SYNTAX:
-		putstrerr(_T("SYNTAX ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_UNBOUND:
-		putstrerr(_T("UNBOUND SYMBOL ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_ARGUMENTS:
-		putstrerr(_T("INCORRECT ARGUMENT ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_WRONG_TYPE:
-		putstrerr(_T("WRONG TYPE ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_NUM_OVERFLOW:
-		putstrerr(_T("NUMERIC OVERFLOW ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_NUM_UNDERFLOW:
-		putstrerr(_T("NUMERIC UNDERFLOW ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_ALLOCATION:
-		putstrerr(_T("MEMORY ALLOCATION ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	case BAMBOO_ERROR_UNKNOWN:
-		putstrerr(_T("UNKNOWN ERROR: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	default:
-		putstrerr(_T("I have no clue why you're here, because you shouldn't: "));
-		putstrerr(bamboo_error_detail());
-		break;
-	}
+	TCHAR *err_type = NULL;
 
+	// Get the error type string and print it out.
+	bamboo_error_type_str(&err_type, err);
+	putstrerr(err_type);
+	putstrerr(_T(": "));
+
+	// Print the error detail string and a line break.
+	putstrerr(bamboo_error_detail());
 	putstrerr(LINEBREAK);
+
+	// Free up our temporary buffer.
+	free(err_type);
 }
 
 /**

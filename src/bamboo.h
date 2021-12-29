@@ -139,6 +139,7 @@ const TCHAR *bamboo_error_detail(void);
 bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg);
 
 // Debugging.
+void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err);
 void bamboo_print_error(bamboo_error_t err);
 void bamboo_print_expr(atom_t atom);
 void bamboo_print_tokens(const TCHAR *str);
