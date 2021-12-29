@@ -63,7 +63,7 @@ int _tmain(void) {
 
 	// Initialize the interpreter.
 	err = bamboo_init(&env);
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		return err;
 
 	// Add our own custom built-in function.
@@ -85,7 +85,7 @@ int _tmain(void) {
 
 		// Parse the user's input.
 		err = bamboo_parse_expr(input, &end, &parsed);
-		if (err > BAMBOO_OK) {
+		IF_BAMBOO_ERROR(err) {
 			uint8_t spaces;
 			
 			// Show where the user was wrong.
@@ -103,7 +103,7 @@ int _tmain(void) {
 
 		// Evaluate the parsed expression.
 		err = bamboo_eval_expr(parsed, env, &result);
-		if (err > BAMBOO_OK) {
+		IF_BAMBOO_ERROR(err) {
 			bamboo_print_error(err);
 			_ftprintf(stderr, LINEBREAK);
 

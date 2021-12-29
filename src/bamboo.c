@@ -17,7 +17,7 @@
 #include <math.h>
 
 // Convinience macros.
-#define IF_ERROR(err)        if ((err) > BAMBOO_OK)
+#define IF_ERROR(err)        IF_BAMBOO_ERROR(err)
 #define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
 

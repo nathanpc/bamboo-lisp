@@ -36,6 +36,9 @@ extern "C" {
 	#define GC_ITER_COUNT_SWEEP 10000
 #endif  // GC_ITER_COUNT_SWEEP
 
+// Error checking macro.
+#define IF_BAMBOO_ERROR(err) if ((err) > BAMBOO_OK)
+
 // Parser return values.
 typedef enum {
 	BAMBOO_PAREN_QUOTE_END = -3,

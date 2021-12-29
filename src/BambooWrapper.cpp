@@ -20,7 +20,7 @@ using namespace Bamboo;
  */
 Lisp::Lisp() {
 	bamboo_error_t err = bamboo_init(&this->m_env.env());
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
 
@@ -29,7 +29,7 @@ Lisp::Lisp() {
  */
 Lisp::~Lisp() {
 	bamboo_error_t err = bamboo_destroy(&this->m_env.env());
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
 
@@ -48,7 +48,7 @@ atom_t Lisp::parse_expr(const TCHAR *input, const TCHAR **end) {
 
 	// Parse the expression.
 	err = bamboo_parse_expr(input, end, &atom);
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 
 	return atom;
@@ -67,7 +67,7 @@ atom_t Lisp::eval_expr(atom_t expr) {
 
 	// Evaluate the expression.
 	err = bamboo_eval_expr(expr, this->m_env.env(), &result);
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 
 	return result;
@@ -132,7 +132,7 @@ atom_t Environment::get(atom_t symbol) {
 
 	// Get the actual atom.
 	err = bamboo_env_get(this->env(), symbol, &atom);
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 
 	return atom;
@@ -150,7 +150,7 @@ void Environment::set(atom_t symbol, atom_t value) {
 
 	// Set the symbol's value.
 	err = bamboo_env_set(this->env(), symbol, value);
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
 
@@ -166,7 +166,7 @@ void Environment::set_builtin(const TCHAR *name, builtin_func_t func) {
 
 	// Add the built-in function.
 	err = bamboo_env_set_builtin(this->env(), name, func);
-	if (err)
+	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
 
