@@ -6,12 +6,19 @@
  */
 
 #include "BambooWrapper.h"
+#include <cstdlib>
 
+// Microsoft-specific stuff.
 #ifdef _DEBUG
-#undef THIS_FILE
-static char THIS_FILE[]=__FILE__;
-#define new DEBUG_NEW
+	#undef THIS_FILE
+	static char THIS_FILE[] = __FILE__;
+	#define new DEBUG_NEW
 #endif
+
+// Make old C++ compilers happy.
+#ifndef nullptr
+	#define nullptr NULL
+#endif  // nullptr
 
 using namespace Bamboo;
 
@@ -177,6 +184,16 @@ void Environment::set_builtin(const TCHAR *name, builtin_func_t func) {
  */
 BambooException::BambooException(bamboo_error_t err) {
 	this->m_err = err;
+	this->m_type_str = nullptr;
+}
+
+/**
+ * Cleans up the mess left behind by the exception message allocations.
+ */
+BambooException::~BambooException() {
+	// Make sure we clean up the allocation mess.
+	if (this->m_type_str)
+		free(m_type_str);
 }
 
 /**
@@ -195,4 +212,27 @@ const char* BambooException::what() const throw() {
  */
 bamboo_error_t BambooException::error_code() {
 	return this->m_err;
+}
+
+/**
+ * Gets the human-friendly error type string that generated the exception.
+ *
+ * @return Error type message.
+ */
+TCHAR* BambooException::error_type() {
+	// Get the error type string if we haven't fetched it yet.
+	if (this->m_type_str == nullptr)
+		bamboo_error_type_str(&this->m_type_str, this->error_code());
+
+	return this->m_type_str;
+}
+
+/**
+ * Gets a human-friendly detailed error message string that generated this
+ * exception.
+ *
+ * @return Detailed error message.
+ */
+const TCHAR* BambooException::error_detail() {
+	return bamboo_error_detail();
 }

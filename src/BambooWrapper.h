@@ -24,14 +24,18 @@ namespace Bamboo {
 	class BambooException : public exception {
 	protected:
 		bamboo_error_t m_err;
+		TCHAR *m_type_str;
 
 	public:
-		// Constructor and classic implementation.
+		// Classic implementation.
 		BambooException(bamboo_error_t err);
+		virtual ~BambooException();
 		virtual const char* what() const throw();
 
 		// Information collection.
 		bamboo_error_t error_code();
+		TCHAR* error_type();
+		const TCHAR* error_detail();
 	};
 
 	/**
