@@ -134,12 +134,64 @@ Environment::Environment(env_t& parent) {
 }
 
 /**
- * Gets the entire internal environment container.
+ * Gets a list of all the symbols in the environment.
  *
- * @return Bamboo internal environment container.
+ * @param  filter Filter to use for generating the list.
+ * @return        Vector of environment items as pairs of symbol-value atoms.
  */
-env_t& Environment::env() {
-	return this->m_env;
+std::vector<pair_t> Environment::list(ListFilter filter) {
+	std::vector<pair_t> items;
+	env_t current = cdr(this->env());
+
+	// Iterate over the symbols in the environment list.
+	while (!nilp(current)) {
+		atom_t item = car(current);
+		atom_type_t item_type = cdr(item).type;
+
+		// Detemine what to filter out of the list.
+		switch (filter) {
+		case FilterNothing:
+			break;
+		case FilterUserGenerated:
+			if (item_type == ATOM_TYPE_BUILTIN)
+				goto next_item;
+
+			break;
+		case FilterClosuresAndMacros:
+			if ((item_type == ATOM_TYPE_CLOSURE) ||
+				(item_type == ATOM_TYPE_MACRO)) {
+				goto append_item;
+			}
+
+			goto next_item;
+		case FilterPrimitives:
+			if ((item_type == ATOM_TYPE_BUILTIN) ||
+				(item_type == ATOM_TYPE_CLOSURE) ||
+				(item_type == ATOM_TYPE_MACRO)) {
+				goto next_item;
+			}
+
+			break;
+		case FilterBuiltins:
+			if (item_type == ATOM_TYPE_BUILTIN)
+				goto append_item;
+
+			goto next_item;
+		}
+
+append_item:
+		// Create a pair for the symbol and its value.
+		pair_t pair;
+		pair.atom[0] = car(item);
+		pair.atom[1] = cdr(item);
+		items.push_back(pair);
+
+next_item:
+		// Go to the next item.
+		current = cdr(current);
+	}
+
+	return items;
 }
 
 /**
@@ -191,6 +243,15 @@ void Environment::set_builtin(const TCHAR *name, builtin_func_t func) {
 	err = bamboo_env_set_builtin(this->env(), name, func);
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
+}
+
+/**
+ * Gets the entire internal environment container.
+ *
+ * @return Bamboo internal environment container.
+ */
+env_t& Environment::env() {
+	return this->m_env;
 }
 
 /**

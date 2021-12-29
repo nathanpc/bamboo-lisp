@@ -12,8 +12,9 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <exception>
 #include <tchar.h>
+#include <exception>
+#include <vector>
 #include "bamboo.h"
 
 namespace Bamboo {
@@ -46,12 +47,22 @@ namespace Bamboo {
 		env_t m_env;
 
 	public:
+		// Filtering enumerator.
+		enum ListFilter {
+			FilterNothing = 0,
+			FilterUserGenerated,
+			FilterClosuresAndMacros,
+			FilterPrimitives,
+			FilterBuiltins
+		};
+
 		// Constructors and destructors.
 		Environment();
 		Environment(env_t& parent);
 
 		// Getters.
 		env_t& env();
+		std::vector<pair_t> list(ListFilter filter);
 
 		// Environment manipulation.
 		atom_t get(atom_t symbol);
