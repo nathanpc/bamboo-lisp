@@ -1895,77 +1895,266 @@ void gc(bool respect_marks) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Gets the string representation of the contents of an atom.
+ *
+ * @param buf  Pointer to a string that will be allocated by this function which
+ *             will return the atom representation string. NOTE: Remember that
+ *             you're responsible for freeing this pointer later.
+ * @param atom Atom to have its contents represented.
+ */
+void bamboo_expr_str(TCHAR **buf, atom_t atom) {
+	TCHAR *tmp;
+	size_t buflen = 0;
+
+    switch (atom.type) {
+    case ATOM_TYPE_NIL:
+		// nil
+        *buf = strdup(_T("nil"));
+        break;
+    case ATOM_TYPE_SYMBOL:
+		// Symbol
+        *buf = strdup(*atom.value.symbol);
+        break;
+    case ATOM_TYPE_INTEGER:
+		// Integer
+#if (_MSC_VER <= 1400)
+		buflen = I64_MAX_DIGITS;
+#else
+		buflen = _sntprintf(NULL, 0, _T("%lld"), atom.value.integer);
+#endif  // _MSC_VER
+
+		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		if (*buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent integer atom"));
+		}
+
+#if (_MSC_VER <= 1400)
+		_sntprintf(*buf, buflen + 1, _T("%I64d"), atom.value.integer);
+#else
+		_sntprintf(*buf, buflen + 1, _T("%lld"), atom.value.integer);
+#endif  // _MSC_VER
+        break;
+    case ATOM_TYPE_FLOAT:
+		// Float
+#if (_MSC_VER <= 1400)
+		buflen = LONGDOUBLE_MAX_DIGITS;
+#else
+		buflen = _sntprintf(NULL, 0, _T("%g"), atom.value.dfloat);
+#endif  // _MSC_VER
+
+		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		if (*buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent float atom"));
+		}
+
+		_sntprintf(*buf, buflen + 1, _T("%g"), atom.value.dfloat);
+        break;
+	case ATOM_TYPE_BOOLEAN:
+		// Boolean
+		buflen = 2;
+		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		if (*buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent boolean atom"));
+		}
+
+		tmp = *buf;
+		tmp[0] = _T('#');
+		tmp[1] = (atom.value.boolean) ? _T('t') : _T('f');
+		tmp[2] = _T('\0');
+		break;
+	case ATOM_TYPE_STRING:
+		// String
+		buflen = _tcslen(*atom.value.str) + 2;
+		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		if (*buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent string atom"));
+		}
+
+		_sntprintf(*buf, buflen + 1, _T("\"%s\""), *atom.value.str);
+		break;
+    case ATOM_TYPE_PAIR:
+		// Pair
+		buflen = 3;
+
+		// Start by allocating the basic string and adding the leading paren.
+		*buf = (TCHAR *)malloc(buflen * sizeof(TCHAR));
+		if (*buf == NULL)
+			goto err_alloc_pair_str;
+        (*buf)[0] = _T('(');
+        (*buf)[1] = _T('\0');
+
+		// Grab the first item of the pair and append it to the string.
+        bamboo_expr_str(&tmp, car(atom));
+		buflen += _tcslen(tmp);
+		*buf = (TCHAR *)realloc(*buf, buflen);
+		if (*buf == NULL)
+			goto err_alloc_pair_str;
+		_tcscat(*buf, tmp);
+		free(tmp);
+
+        // Iterate over the right-hand side of the pair since it may be a list.
+		atom = cdr(atom);
+        while (!nilp(atom)) {
+            // Check if we are in a list.
+            if (atom.type == ATOM_TYPE_PAIR) {
+				bamboo_expr_str(&tmp, car(atom));
+
+				buflen += _tcslen(tmp) + 1;
+				*buf = (TCHAR *)realloc(*buf, buflen);
+				if (*buf == NULL)
+					goto err_alloc_pair_str;
+
+				_tcscat(*buf, _T(" "));
+				_tcscat(*buf, tmp);
+
+				free(tmp);
+                atom = cdr(atom);
+            } else {
+                // It was just a simple pair.
+				bamboo_expr_str(&tmp, atom);
+
+				buflen += _tcslen(tmp) + 3;
+				*buf = (TCHAR *)realloc(*buf, buflen);
+				if (*buf == NULL)
+					goto err_alloc_pair_str;
+
+				_tcscat(*buf, _T(" . "));
+				_tcscat(*buf, tmp);
+
+				free(tmp);
+                break;
+            }
+        }
+
+		// Append the last paren and terminate the string.
+		_tcscat(*buf, _T(")"));
+		break;
+err_alloc_pair_str:
+		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+			_T("string to represent pair atom"));
+        break;
+	case ATOM_TYPE_BUILTIN:
+		// Built-in Function
+#if (_MSC_VER <= 1400)
+		buflen = 32;
+#else
+		buflen = _sntprintf(NULL, 0, _T("#<BUILTIN:%p>"), atom.value.builtin);
+#endif  // _MSC_VER
+
+		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		if (*buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent built-in function atom"));
+		}
+
+		_sntprintf(*buf, buflen + 1, _T("#<BUILTIN:%p>"), atom.value.builtin);
+		break;
+	case ATOM_TYPE_CLOSURE:
+		// Closure
+		buflen = 14;
+
+		// Allocate the string and begin with the type identifier.
+		*buf = (TCHAR *)malloc(buflen * sizeof(TCHAR));
+		if (*buf == NULL)
+			goto err_alloc_closure_str;
+		(*buf)[0] = _T('\0');
+		_tcscat(*buf, _T("#<FUNCTION:"));
+
+		// Do we have arguments?
+		if (!nilp(car(cdr(atom)))) {
+			bamboo_expr_str(&tmp, car(cdr(atom)));
+
+			buflen += _tcslen(tmp);
+			*buf = (TCHAR *)realloc(*buf, buflen);
+			if (*buf == NULL)
+				goto err_alloc_closure_str;
+
+			_tcscat(*buf, tmp);
+			free(tmp);
+		}
+
+		// Append the closure body.
+		_tcscat(*buf, _T(" "));
+		bamboo_expr_str(&tmp, cdr(cdr(atom)));
+		buflen += _tcslen(tmp);
+		*buf = (TCHAR *)realloc(*buf, buflen);
+		if (*buf == NULL)
+			goto err_alloc_closure_str;
+		_tcscat(*buf, tmp);
+		free(tmp);
+
+		// Finalize the string.
+		_tcscat(*buf, _T(">"));
+		break;
+err_alloc_closure_str:
+		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent closure atom"));
+		break;
+	case ATOM_TYPE_MACRO:
+		// Macro
+		buflen = 11;
+
+		// Allocate the string and begin with the type identifier.
+		*buf = (TCHAR *)malloc(buflen * sizeof(TCHAR));
+		if (*buf == NULL)
+			goto err_alloc_macro_str;
+		(*buf)[0] = _T('\0');
+		_tcscat(*buf, _T("#<MACRO:"));
+
+		// Do we have arguments?
+		if (!nilp(car(cdr(atom)))) {
+			bamboo_expr_str(&tmp, car(cdr(atom)));
+
+			buflen += _tcslen(tmp);
+			*buf = (TCHAR *)realloc(*buf, buflen);
+			if (*buf == NULL)
+				goto err_alloc_macro_str;
+
+			_tcscat(*buf, tmp);
+			free(tmp);
+		}
+
+		// Append the macro body.
+		_tcscat(*buf, _T(" "));
+		bamboo_expr_str(&tmp, cdr(cdr(atom)));
+		buflen += _tcslen(tmp);
+		*buf = (TCHAR *)realloc(*buf, buflen);
+		if (*buf == NULL)
+			goto err_alloc_macro_str;
+		_tcscat(*buf, tmp);
+		free(tmp);
+
+		// Finalize the string.
+		_tcscat(*buf, _T(">"));
+		break;
+err_alloc_macro_str:
+		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent macro atom"));
+		break;
+	default:
+		// Unknown
+		*buf = strdup(_T("Unknown type. Don't know how to display this"));
+    }
+}
+
+/**
  * Prints the contents of an atom in a standard way.
  *
  * @param atom Atom to have its contents printed.
  */
 void bamboo_print_expr(atom_t atom) {
-    switch (atom.type) {
-    case ATOM_TYPE_NIL:
-        putstr(_T("nil"));
-        break;
-    case ATOM_TYPE_SYMBOL:
-        _tprintf(_T("%s"), *atom.value.symbol);
-        break;
-    case ATOM_TYPE_INTEGER:
-#if (_MSC_VER <= 1400)
-        _tprintf(_T("%I64d"), atom.value.integer);
-#else
-        _tprintf(_T("%lld"), atom.value.integer);
-#endif
-        break;
-    case ATOM_TYPE_FLOAT:
-        _tprintf(_T("%g"), atom.value.dfloat);
-        break;
-	case ATOM_TYPE_BOOLEAN:
-		_tprintf(_T("#%c"), (atom.value.boolean) ? _T('t') : _T('f'));
-		break;
-	case ATOM_TYPE_STRING:
-		_tprintf(_T("\"%s\""), *atom.value.str);
-		break;
-    case ATOM_TYPE_PAIR:
-        _puttchar(_T('('));
-        bamboo_print_expr(car(atom));
-        atom = cdr(atom);
+	TCHAR *buf;
 
-        // Iterate over the right-hand side of the pair since it may be a list.
-        while (!nilp(atom)) {
-            // Check if we are in a list.
-            if (atom.type == ATOM_TYPE_PAIR) {
-                _puttchar(_T(' '));
-                bamboo_print_expr(car(atom));
-                atom = cdr(atom);
-            } else {
-                // It was just a simple pair.
-                putstr(_T(" . "));
-                bamboo_print_expr(atom);
-                break;
-            }
-        }
-        _puttchar(_T(')'));
-        break;
-	case ATOM_TYPE_BUILTIN:
-		_tprintf(_T("#<BUILTIN:%p>"), atom.value.builtin);
-		break;
-	case ATOM_TYPE_CLOSURE:
-		putstr(_T("#<FUNCTION:"));
-		if (!nilp(car(cdr(atom))))
-			bamboo_print_expr(car(cdr(atom)));
-		putstr(_T(" "));
-		bamboo_print_expr(cdr(cdr(atom)));
-		putstr(_T(">"));
-		break;
-	case ATOM_TYPE_MACRO:
-		putstr(_T("#<MACRO:"));
-		if (!nilp(car(cdr(atom))))
-			bamboo_print_expr(car(cdr(atom)));
-		putstr(_T(" "));
-		bamboo_print_expr(cdr(cdr(atom)));
-		putstr(_T(">"));
-		break;
-	default:
-		putstr(_T("Unknown type. Don't know how to display this"));
-    }
+	// Get the atom content as a string and print it.
+	bamboo_expr_str(&buf, atom);
+	putstr(buf);
+
+	// Free up the allocated string.
+	free(buf);
 }
 
 /**

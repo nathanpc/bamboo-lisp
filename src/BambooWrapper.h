@@ -75,6 +75,9 @@ namespace Bamboo {
 		atom_t parse_expr(const TCHAR *input, const TCHAR **end);
 		atom_t eval_expr(atom_t expr);
 
+		// Information.
+		TCHAR* expr_str(atom_t atom);
+
 		// Environment.
 		Environment& env();
 	};

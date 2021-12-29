@@ -93,6 +93,22 @@ atom_t Lisp::parse_expr(const TCHAR *input) {
 }
 
 /**
+ * Gets the string representation of the contents of an expression.
+ * WARNING: Remember that you're responsible for freeing the pointer returned
+ * by this function later.
+ *
+ * @param  atom Atom to have its contents represented.
+ * @return      String allocated by this function containing the atom
+ *              represented as a string.
+ */
+TCHAR* Lisp::expr_str(atom_t atom) {
+	TCHAR *buf;
+	bamboo_expr_str(&buf, atom);
+
+	return buf;
+}
+
+/**
  * Gets the interpreter environment.
  *
  * @return Reference to our current environment.
