@@ -13,49 +13,68 @@
 #endif // _MSC_VER > 1000
 
 #include <exception>
-#include "../../lib/lisp/src/bamboo.h"
+#include <tchar.h>
+#include "bamboo.h"
 
-/**
- * Bamboo exception abstraction to handle errors.
- */
-class BambooException : public exception {
-protected:
-	bamboo_error_t err;
+namespace Bamboo {
 
-public:
-	BambooException(bamboo_error_t err);
-	virtual const char* what() const throw();
+	/**
+	 * Bamboo exception abstraction to handle errors.
+	 */
+	class BambooException : public exception {
+	protected:
+		bamboo_error_t m_err;
 
-	bamboo_error_t ErrorCode();
-};
+	public:
+		// Constructor and classic implementation.
+		BambooException(bamboo_error_t err);
+		virtual const char* what() const throw();
 
-/**
- * Bamboo environment abstraction class.
- */
-class BambooEnvironment {
-protected:
-	env_t env;
+		// Information collection.
+		bamboo_error_t error_code();
+	};
 
-public:
-	BambooEnvironment();
-	BambooEnvironment(env_t& parent);
+	/**
+	 * Bamboo environment abstraction class.
+	 */
+	class Environment {
+	protected:
+		env_t m_env;
 
-	env_t& environment();
+	public:
+		// Constructors and destructors.
+		Environment();
+		Environment(env_t& parent);
 
-	atom_t get(atom_t symbol);
-	void set(atom_t symbol, atom_t value);
-};
+		// Getters.
+		env_t& env();
 
-/**
- * Bamboo wrapper class.
- */
-class Bamboo {
-protected:
-	BambooEnvironment env;
+		// Environment manipulation.
+		atom_t get(atom_t symbol);
+		void set(atom_t symbol, atom_t value);
+		void set_builtin(const TCHAR *name, builtin_func_t func);
+	};
 
-public:
-	Bamboo();
-	virtual ~Bamboo();
-};
+	/**
+	 * Bamboo wrapper class.
+	 */
+	class Lisp {
+	protected:
+		Environment m_env;
+
+	public:
+		Lisp();
+		virtual ~Lisp();
+
+		// Parsing and evaluation.
+		atom_t parse_expr(const TCHAR *input);
+		atom_t parse_expr(const TCHAR *input, const TCHAR **end);
+		atom_t eval_expr(atom_t expr);
+
+		// Environment.
+		Environment& env();
+	};
+
+}
 
 #endif // !defined(AFX_BAMBOOLISP_H__758F6A83_C64F_4861_B2E8_9BBFFAB7465B__INCLUDED_)
