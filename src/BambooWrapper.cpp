@@ -26,7 +26,7 @@ using namespace Bamboo;
  * Initializes a brand new interpreter environment.
  */
 Lisp::Lisp() {
-	bamboo_error_t err = bamboo_init(&this->m_env.env());
+	bamboo_error_t err = bamboo_init(&m_env.env());
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
@@ -35,7 +35,7 @@ Lisp::Lisp() {
  * Destroys the interpreter environment.
  */
 Lisp::~Lisp() {
-	bamboo_error_t err = bamboo_destroy(&this->m_env.env());
+	bamboo_error_t err = bamboo_destroy(&m_env.env());
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
@@ -73,7 +73,7 @@ atom_t Lisp::eval_expr(atom_t expr) {
 	bamboo_error_t err;
 
 	// Evaluate the expression.
-	err = bamboo_eval_expr(expr, this->m_env.env(), &result);
+	err = bamboo_eval_expr(expr, m_env.env(), &result);
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 
@@ -89,7 +89,7 @@ atom_t Lisp::eval_expr(atom_t expr) {
  */
 atom_t Lisp::parse_expr(const TCHAR *input) {
 	const TCHAR *ignored;
-	return this->parse_expr(input, &ignored);
+	return parse_expr(input, &ignored);
 }
 
 /**
@@ -114,14 +114,14 @@ TCHAR* Lisp::expr_str(atom_t atom) {
  * @return Reference to our current environment.
  */
 Environment& Lisp::env() {
-	return this->m_env;
+	return m_env;
 }
 
 /**
  * Creates a new root Bamboo environment.
  */
 Environment::Environment() {
-	this->m_env = bamboo_env_new(nil);
+	m_env = bamboo_env_new(nil);
 }
 
 /**
@@ -130,7 +130,7 @@ Environment::Environment() {
  * @param parent Parent environment.
  */
 Environment::Environment(env_t& parent) {
-	this->m_env = bamboo_env_new(parent);
+	m_env = bamboo_env_new(parent);
 }
 
 /**
@@ -141,7 +141,7 @@ Environment::Environment(env_t& parent) {
  */
 std::vector<pair_t> Environment::list(ListFilter filter) {
 	std::vector<pair_t> items;
-	env_t current = cdr(this->env());
+	env_t current = cdr(env());
 
 	// Iterate over the symbols in the environment list.
 	while (!nilp(current)) {
@@ -206,7 +206,7 @@ atom_t Environment::get(atom_t symbol) {
 	atom_t atom;
 
 	// Get the actual atom.
-	err = bamboo_env_get(this->env(), symbol, &atom);
+	err = bamboo_env_get(env(), symbol, &atom);
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 
@@ -224,7 +224,7 @@ void Environment::set(atom_t symbol, atom_t value) {
 	bamboo_error_t err;
 
 	// Set the symbol's value.
-	err = bamboo_env_set(this->env(), symbol, value);
+	err = bamboo_env_set(env(), symbol, value);
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
@@ -240,7 +240,7 @@ void Environment::set_builtin(const TCHAR *name, builtin_func_t func) {
 	bamboo_error_t err;
 
 	// Add the built-in function.
-	err = bamboo_env_set_builtin(this->env(), name, func);
+	err = bamboo_env_set_builtin(env(), name, func);
 	IF_BAMBOO_ERROR(err)
 		throw BambooException(err);
 }
@@ -251,7 +251,7 @@ void Environment::set_builtin(const TCHAR *name, builtin_func_t func) {
  * @return Bamboo internal environment container.
  */
 env_t& Environment::env() {
-	return this->m_env;
+	return m_env;
 }
 
 /**
@@ -260,8 +260,8 @@ env_t& Environment::env() {
  * @param err Bamboo error.
  */
 BambooException::BambooException(bamboo_error_t err) {
-	this->m_err = err;
-	this->m_type_str = nullptr;
+	m_err = err;
+	m_type_str = nullptr;
 }
 
 /**
@@ -269,7 +269,7 @@ BambooException::BambooException(bamboo_error_t err) {
  */
 BambooException::~BambooException() {
 	// Make sure we clean up the allocation mess.
-	if (this->m_type_str)
+	if (m_type_str)
 		free(m_type_str);
 }
 
@@ -288,7 +288,7 @@ const char* BambooException::what() const throw() {
  * @return Internal error code.
  */
 bamboo_error_t BambooException::error_code() {
-	return this->m_err;
+	return m_err;
 }
 
 /**
@@ -298,10 +298,10 @@ bamboo_error_t BambooException::error_code() {
  */
 TCHAR* BambooException::error_type() {
 	// Get the error type string if we haven't fetched it yet.
-	if (this->m_type_str == nullptr)
-		bamboo_error_type_str(&this->m_type_str, this->error_code());
+	if (m_type_str == nullptr)
+		bamboo_error_type_str(&m_type_str, error_code());
 
-	return this->m_type_str;
+	return m_type_str;
 }
 
 /**
