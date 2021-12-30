@@ -1,45 +1,41 @@
-### Makefile
-### Building instructions for Bamboo Lisp using Open Watcom's Make utility.
-###
-### Author: Nathan Campos <nathan@innoveworkshop.com>
-
-# Settings
 PROJECT = bamboo
-PLATFORM = nt
+PLATFORM := $(shell uname -s)
 
-# Paths
+CC = gcc
+RM = rm -f
+GDB = gdb
+MKDIR = mkdir -p
+
 SRCDIR = src
-BUILDDIR = build
-OBJS = $(BUILDDIR)/main.obj $(BUILDDIR)/bamboo.obj
-BIN  = $(BUILDDIR)/$(PROJECT).exe
+BUILDDIR := build
+TARGET = $(BUILDDIR)/$(PROJECT)
 
-# Programs
-CC = wcc386
-LD = wlink
-RM = del /F /Q
-RMDIR = rmdir
+SOURCES += $(SRCDIR)/main.c $(SRCDIR)/bamboo.c
+OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.c=.o))
+CFLAGS = -Wall
+LDFLAGS = 
 
-# Flags
-CFLAGS = -w4 -e25 -zq -od -d2 -6r -bt=$(PLATFORM) -mf
-LDFLAGS = d all sys $(PLATFORM) op m op maxe=25 op q op symf
+.PHONY: all run test debug memcheck clean
+all: $(TARGET)
 
-all: $(BIN) .symbolic
+$(TARGET): $(OBJECTS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
-$(BUILDDIR)/bamboo.obj: $(SRCDIR)/bamboo.c
-	$(CC) $< $(CFLAGS) -fo=$@
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILDDIR)/main.obj: $(SRCDIR)/main.c
-	$(CC) $< $(CFLAGS) -fo=$@
+run: $(TARGET)
+	$(TARGET)
 
-$(BIN): $(BUILDDIR)/ $(OBJS)
-	$(LD) name $@ file { $(OBJS) }
+debug: CFLAGS += -g3 # -DDEBUG
+debug: clean $(TARGET)
+	$(GDB) $(TARGET)
 
-$(BUILDDIR)/:
-	mkdir $(BUILDDIR)
+memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
+memcheck: clean $(TARGET)
+	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all --track-origins=yes --log-file=valgrind.log $(TARGET)
+	cat valgrind.log
 
-run: $(BIN) .symbolic
-	$<
-
-clean: .symbolic
-	$(RM) $(BUILDDIR)\*
-	$(RMDIR) $(BUILDDIR)
+clean:
+	$(RM) -r $(BUILDDIR)
+	$(RM) valgrind.log

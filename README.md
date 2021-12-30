@@ -1,5 +1,5 @@
 <h1>
-	<img src="https://raw.githubusercontent.com/nathanpc/bamboo-lisp/master/Icon/Icon-512.png" width="64" height="64" />
+	<img src="https://raw.githubusercontent.com/nathanpc/bamboo-lisp/master/assets/icon/icon-512.png" width="64" height="64" />
 	Bamboo Lisp
 </h1>
 
