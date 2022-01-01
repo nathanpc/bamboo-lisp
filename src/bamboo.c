@@ -15,51 +15,20 @@
 #include <limits.h>
 #include <float.h>
 #include <math.h>
+#include <stdarg.h>
 
 // Convinience macros.
 #define IF_ERROR(err)        IF_BAMBOO_ERROR(err)
 #define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
 
-// Make Microsoft's compiler happy about our use of strdup and strncpy.
-#ifdef _MSC_VER
-	#ifdef UNICODE
-		#define strdup  _wcsdup
-	#else
-		#define strdup  _strdup
-	#endif  // UNICODE
-#endif  // _MSC_VER
-
-// Some compilers (*cough* Open Watcom *cough*) forgot to implement _t variants
-// of strtoll and strtold.
-#ifndef _tcstoll
-	#ifdef _MSC_VER
-		#define _tcstoll _tcstoi64
-	#else
-		#if defined(UNICODE) || defined(_UNICODE)
-			#define _tcstoll wcstoll
-		#else
-			#define _tcstoll strtoll
-		#endif  // UNICODE
-	#endif  // _MSC_VER
-#endif  // _tcstoll
-#ifndef _tcstold
-	#ifndef _MSC_VER
-		#if defined(UNICODE) || defined(_UNICODE)
-			#define _tcstold wcstold
-		#else
-			#define _tcstold strtold
-		#endif  // UNICODE
-	#endif // _MSC_VER
-#endif  // _tcstold
-
 // Make Visual C++ 6.0 not complain about passing NULL to _sntprintf.
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 	#define I64_MAX_DIGITS        128
 	#define LONGDOUBLE_MAX_DIGITS 128
 #endif
 
-// HUGE_VALL is C99, so let's just make sure we have something.
+// HUGE_VALL is C99, so let's just make sure we cater to the previous decade.
 #ifndef HUGE_VALL
 	#define HUGE_VALL LDBL_MAX
 #endif  // HUGE_VALL
@@ -392,7 +361,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
 	alloc->type = ALLOCATION_TYPE_STRING;
-	alloc->str = strdup(name);
+	alloc->str = _tcsdup(name);
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -442,7 +411,7 @@ atom_t bamboo_string(const TCHAR *str) {
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
 	alloc->type = ALLOCATION_TYPE_STRING;
-	alloc->str = strdup(str);
+	alloc->str = _tcsdup(str);
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -876,7 +845,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		int64_t integer;
 		long double dfloat;
 
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		// Create a string with only the number.
 		buf = strcpyse(start, end);
 
@@ -888,7 +857,7 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 #endif  // _MSC_VER
 
 		// Try to parse an integer.
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		if (!contains_point(buf)) {
 			integer = _atoi64(buf);
 
@@ -955,7 +924,10 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 		}
 	}
 
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 symbolparser:
+#endif  // _MSC_VER
+
 	// Allocate string for symbol upper-case conversion.
 	buf = (TCHAR *)malloc(sizeof(TCHAR) * (end - start + 1));
 	if (buf == NULL) {
@@ -1909,15 +1881,15 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
     switch (atom.type) {
     case ATOM_TYPE_NIL:
 		// nil
-        *buf = strdup(_T("nil"));
+        *buf = _tcsdup(_T("nil"));
         break;
     case ATOM_TYPE_SYMBOL:
 		// Symbol
-        *buf = strdup(*atom.value.symbol);
+        *buf = _tcsdup(*atom.value.symbol);
         break;
     case ATOM_TYPE_INTEGER:
 		// Integer
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = I64_MAX_DIGITS;
 #else
 		buflen = _sntprintf(NULL, 0, _T("%lld"), atom.value.integer);
@@ -1929,7 +1901,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				_T("string to represent integer atom"));
 		}
 
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		_sntprintf(*buf, buflen + 1, _T("%I64d"), atom.value.integer);
 #else
 		_sntprintf(*buf, buflen + 1, _T("%lld"), atom.value.integer);
@@ -1937,10 +1909,10 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
         break;
     case ATOM_TYPE_FLOAT:
 		// Float
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = LONGDOUBLE_MAX_DIGITS;
 #else
-		buflen = _sntprintf(NULL, 0, _T("%g"), atom.value.dfloat);
+		buflen = _sntprintf(NULL, 0, _T("%Lg"), atom.value.dfloat);
 #endif  // _MSC_VER
 
 		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
@@ -1949,7 +1921,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				_T("string to represent float atom"));
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("%g"), atom.value.dfloat);
+		_sntprintf(*buf, buflen + 1, _T("%Lg"), atom.value.dfloat);
         break;
 	case ATOM_TYPE_BOOLEAN:
 		// Boolean
@@ -2039,7 +2011,7 @@ err_alloc_pair_str:
         break;
 	case ATOM_TYPE_BUILTIN:
 		// Built-in Function
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = 32;
 #else
 		buflen = _sntprintf(NULL, 0, _T("#<BUILTIN:%p>"), atom.value.builtin);
@@ -2137,7 +2109,7 @@ err_alloc_macro_str:
 		break;
 	default:
 		// Unknown
-		*buf = strdup(_T("Unknown type. Don't know how to display this"));
+		*buf = _tcsdup(_T("Unknown type. Don't know how to display this"));
     }
 }
 
@@ -2169,37 +2141,37 @@ void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err) {
 	// Get the error type string.
 	switch (err) {
 	case BAMBOO_OK:
-		*buf = strdup(_T("OK"));
+		*buf = _tcsdup(_T("OK"));
 		break;
 	case BAMBOO_PAREN_END:
-		*buf = strdup(_T("PARENTHESIS ENDED"));
+		*buf = _tcsdup(_T("PARENTHESIS ENDED"));
 		break;
 	case BAMBOO_ERROR_SYNTAX:
-		*buf = strdup(_T("SYNTAX ERROR"));
+		*buf = _tcsdup(_T("SYNTAX ERROR"));
 		break;
 	case BAMBOO_ERROR_UNBOUND:
-		*buf = strdup(_T("UNBOUND SYMBOL ERROR"));
+		*buf = _tcsdup(_T("UNBOUND SYMBOL ERROR"));
 		break;
 	case BAMBOO_ERROR_ARGUMENTS:
-		*buf = strdup(_T("INCORRECT ARGUMENT ERROR"));
+		*buf = _tcsdup(_T("INCORRECT ARGUMENT ERROR"));
 		break;
 	case BAMBOO_ERROR_WRONG_TYPE:
-		*buf = strdup(_T("WRONG TYPE ERROR"));
+		*buf = _tcsdup(_T("WRONG TYPE ERROR"));
 		break;
 	case BAMBOO_ERROR_NUM_OVERFLOW:
-		*buf = strdup(_T("NUMERIC OVERFLOW ERROR"));
+		*buf = _tcsdup(_T("NUMERIC OVERFLOW ERROR"));
 		break;
 	case BAMBOO_ERROR_NUM_UNDERFLOW:
-		*buf = strdup(_T("NUMERIC UNDERFLOW ERROR"));
+		*buf = _tcsdup(_T("NUMERIC UNDERFLOW ERROR"));
 		break;
 	case BAMBOO_ERROR_ALLOCATION:
-		*buf = strdup(_T("MEMORY ALLOCATION ERROR"));
+		*buf = _tcsdup(_T("MEMORY ALLOCATION ERROR"));
 		break;
 	case BAMBOO_ERROR_UNKNOWN:
-		*buf = strdup(_T("UNKNOWN ERROR"));
+		*buf = _tcsdup(_T("UNKNOWN ERROR"));
 		break;
 	default:
-		*buf = strdup(_T("I have no clue why you're here, because you ")
+		*buf = _tcsdup(_T("I have no clue why you're here, because you ")
 			_T("shouldn't"));
 		break;
 	}
@@ -2404,6 +2376,8 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 			case ATOM_TYPE_FLOAT:
 				num.value.dfloat += car(args).value.integer;
 				break;
+			default:
+				return BAMBOO_ERROR_UNKNOWN;
 			}
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			// Float argument. Check if we should change our atom type first.
@@ -2464,6 +2438,8 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 			case ATOM_TYPE_FLOAT:
 				num.value.dfloat -= car(args).value.integer;
 				break;
+			default:
+				return BAMBOO_ERROR_UNKNOWN;
 			}
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			// Float argument.
@@ -2534,6 +2510,8 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 			case ATOM_TYPE_FLOAT:
 				num.value.dfloat *= car(args).value.integer;
 				break;
+			default:
+				return BAMBOO_ERROR_UNKNOWN;
 			}
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			// Float argument.
@@ -2916,6 +2894,9 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 	case ATOM_TYPE_SYMBOL:
 		*result = bamboo_boolean(*a.value.symbol == *b.value.symbol);
 		break;
+	case ATOM_TYPE_STRING:
+		*result = bamboo_boolean(_tcscmp(*a.value.str, *b.value.str) == 0);
+		break;
 	case ATOM_TYPE_BOOLEAN:
 		*result = bamboo_boolean(a.value.boolean == b.value.boolean);
 		break;
@@ -3132,7 +3113,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	        break;
 	    case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			tmplen = I64_MAX_DIGITS;
 #else
 			tmplen = _sntprintf(NULL, 0, _T("%lld"), car(args).value.integer);
@@ -3143,7 +3124,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display integer atom"));
 			}
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			_sntprintf(tmpbuf, tmplen + 1, _T("%I64d"), car(args).value.integer);
 #else
 			_sntprintf(tmpbuf, tmplen + 1, _T("%lld"), car(args).value.integer);
@@ -3164,10 +3145,10 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	        break;
 	    case ATOM_TYPE_FLOAT:
 			// Get the length of the string we'll need to concatenate this number.
-#if (_MSC_VER <= 1400)
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			tmplen = LONGDOUBLE_MAX_DIGITS;
 #else
-			tmplen = _sntprintf(NULL, 0, _T("%g"), car(args).value.dfloat);
+			tmplen = _sntprintf(NULL, 0, _T("%Lg"), car(args).value.dfloat);
 #endif  // _MSC_VER
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
@@ -3175,7 +3156,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display float atom"));
 			}
-			_sntprintf(tmpbuf, tmplen + 1, _T("%g"), car(args).value.dfloat);
+			_sntprintf(tmpbuf, tmplen + 1, _T("%Lg"), car(args).value.dfloat);
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
@@ -3193,10 +3174,10 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 		case ATOM_TYPE_BOOLEAN:
 			// Determine the string needed to concatenate depending on value.
 			if (car(args).value.boolean) {
-				tmpbuf = strdup(_T("TRUE"));
+				tmpbuf = _tcsdup(_T("TRUE"));
 				tmplen = 4;
 			} else {
-				tmpbuf = strdup(_T("FALSE"));
+				tmpbuf = _tcsdup(_T("FALSE"));
 				tmplen = 5;
 			}
 

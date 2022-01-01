@@ -7,30 +7,39 @@
 
 // Make sure Windows (and Open Watcom under Windows) is happy.
 #ifdef _WIN32
-#include <windows.h>
+	#include <windows.h>
 
-#ifndef _O_WTEXT
-#define _O_WTEXT 0x10000
-#endif  // _O_WTEXT
+	// For some reason this is not defined in the standard header.
+	#ifndef _O_WTEXT
+		#define _O_WTEXT 0x10000
+	#endif  // _O_WTEXT
+	
+	// Make sure unicode is enabled.
+	#ifndef __WATCOMC__
+		#ifndef _UNICODE
+			#define _UNICODE
+		#endif  // _UNICODE
+		#ifndef UNICODE
+			#define UNICODE
+		#endif  // UNICODE
+	#endif  // __WATCOMC__
 #endif  // _WIN32
 
-// Make sure unicode is enabled.
-#if !defined(__WATCOMC__)
-#ifndef _UNICODE
-#define _UNICODE
-#endif  // _UNICODE
-#ifndef UNICODE
-#define UNICODE
+// Make sure we also have a "T-variant" for int.
+#ifdef UNICODE
+#include <wchar.h>
+typedef wint_t TINT;
+#else
+typedef int TINT;
 #endif  // UNICODE
-#endif  // __WATCOMC__
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <locale.h>
 #ifdef _WIN32
-#include <fcntl.h>
-#include <io.h>
+	#include <fcntl.h>
+	#include <io.h>
 #endif // _WIN32
 #include "bamboo.h"
 
@@ -58,8 +67,8 @@ int _tmain(void) {
 	(void)_setmode(_fileno(stdin), _O_WTEXT);
 #else
 	setlocale(LC_ALL, "en_US.UTF-8");
-#endif
-#endif
+#endif  // _WIN32
+#endif  // UNICODE
 
 	// Initialize the interpreter.
 	err = bamboo_init(&env);
@@ -143,7 +152,7 @@ int readline(TCHAR *buf, size_t len) {
 	_tprintf(_T("> "));
 	for (i = 0; i < len; i++) {
 		// Get character from STDIN.
-		wint_t c = _gettchar();
+		TINT c = _gettchar();
 
 		switch (c) {
 		case _T('\"'):

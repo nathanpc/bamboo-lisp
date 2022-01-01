@@ -18,15 +18,77 @@ extern "C" {
 // Unicode support.
 #ifdef _WIN32
 	#include <tchar.h>
-#endif  // _WIN32
-
-#ifndef _T
+	
+	// Make Microsoft's compiler happy about their horrible implementations.
 	#ifdef UNICODE
-		#define _T(x) L ## x
+		#define _tcsdup  _wcsdup
+		#define _tcstoll _tcstoi64
 	#else
-		#define _T(x) x
-	#endif  // UNICODES
-#endif  // _T
+		#define _tcsdup  _strdup
+	#endif  // UNICODE
+#else
+	#ifdef UNICODE
+		#include <wchar.h>
+	
+		// Very basics.
+		typedef wchar_t TCHAR;
+		#define _T(x)   L ## x
+		#define _tmain  main // wmain
+	
+		// Standard I/O.
+		#define	_tprintf   wprintf
+		#define	_ftprintf  fwprintf
+		#define _sntprintf swprintf
+		#define _puttchar  putwchar
+		#define _puttc     putwc
+		#define _gettchar  getwchar
+
+		// String operations.
+		#define _tcscmp   wcscmp
+		#define _tcsspn   wcsspn
+		#define _tcschr   wcschr
+		#define _tcscat   wcscat
+		#define _tcsncat  wcsncat
+		#define _tcscspn  wcscspn
+		#define _tcsncpy  wcsncpy
+		#define _tcsdup   wcsdup
+		#define _tcslen   wcslen
+		#define _totupper towupper
+	
+		// String conversions.
+		#define _tcstoll wcstoll
+		#define _tcstold wcstold
+	#else	
+		// Very basics.
+		typedef char   TCHAR;
+		#define _T(x)  x
+		#define _tmain main
+	
+		// Standard I/O.
+		#define	_tprintf   printf
+		#define	_ftprintf  fprintf
+		#define _sntprintf snprintf
+		#define _puttchar  putchar
+		#define _puttc     putc
+		#define _gettchar  getchar
+
+		// String operations.
+		#define _tcscmp   strcmp
+		#define _tcsspn   strspn
+		#define _tcschr   strchr
+		#define _tcscat   strcat
+		#define _tcsncat  strncat
+		#define _tcscspn  strcspn
+		#define _tcsncpy  strncpy
+		#define _tcsdup   strdup
+		#define _tcslen   strlen
+		#define _totupper toupper
+	
+		// String conversions.
+		#define _tcstoll strtoll
+		#define _tcstold strtold
+	#endif  // UNICODE
+#endif  // _WIN32
 
 // Global definitions.
 #ifndef LINEBREAK
