@@ -41,6 +41,22 @@
 	#define LLONG_MIN _I64_MIN
 #endif  // LLONG_MIN
 
+// Unix variants never implemented snwprintf. *facepalm*
+#if defined(UNICODE) && !defined(snwprintf) && !defined(_WIN32)
+	#define IMPLEMENT_SNWPRINTF
+	#define SNWPRINTF_MAX_LEN 1024  // Ugh.
+	int snwprintf(wchar_t *buf, size_t len, const wchar_t *format, ...);
+#endif  // snwprintf
+
+// Make sure we use the right format specifier for printf and wprintf.
+#ifdef UNICODE
+	#define SPEC_CHR _T("%lc")
+	#define SPEC_STR _T("%ls")
+#else
+	#define SPEC_CHR _T("%c")
+	#define SPEC_STR _T("%s")
+#endif  // UNICODE
+
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
 
@@ -1711,8 +1727,8 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 		TCHAR msg[ERROR_MSG_STR_LEN + 1];
 
 		// Build the error string.
-		_sntprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '%s' not found in any of the ")
-			_T("environments"), *symbol.value.symbol);
+		_sntprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '") SPEC_STR _T("' not ")
+			_T("found in any of the environments"), *symbol.value.symbol);
 		return bamboo_error(BAMBOO_ERROR_UNBOUND, msg);
 	}
 
@@ -1946,7 +1962,8 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				_T("string to represent string atom"));
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("\"%s\""), *atom.value.str);
+		_sntprintf(*buf, buflen + 1, _T("\"") SPEC_STR _T("\""),
+			*atom.value.str);
 		break;
     case ATOM_TYPE_PAIR:
 		// Pair
@@ -2228,7 +2245,7 @@ void bamboo_print_tokens(const TCHAR *str) {
 		buf[i] = _T('\0');
 
 		// Print the token and free the string.
-		_tprintf(_T("'%s' "), buf);
+		_tprintf(_T("'") SPEC_STR _T("' "), buf);
 		free(buf);
 	}
 }
@@ -3321,3 +3338,46 @@ bool contains_point(const TCHAR *str) {
 
 	return false;
 }
+
+#ifdef IMPLEMENT_SNWPRINTF
+/**
+ * Fixes the fact that Unix systems never implemented snwprintf. This is absurd
+ * and should've been fixed a long time ago so we don't need to create horrible
+ * hacks like this!
+ *
+ * @param  buf    Pointer to a buffer where the resulting C-string is stored.
+ * @param  len    Maximum number of bytes to be used in the buffer.
+ * @param  format Format string that follows the same specifications as printf.
+ * @param  ...    Values to be used to replace specifiers in the format string.
+ * @return        The number of characters that would have been written if len
+ *                had been sufficiently large, not counting the terminating
+ *                NULL character.
+ */
+int snwprintf(wchar_t *buf, size_t len, const wchar_t *format, ...) {
+	int ret;
+	size_t tmplen;
+
+	va_list args;
+    va_start(args, format);
+
+	// Check if we are using this for string sizing.
+	if (buf == NULL) {
+		tmplen = SNWPRINTF_MAX_LEN;
+		buf = (wchar_t *)malloc((tmplen + 1) * sizeof(wchar_t));
+	} else {
+		tmplen = len;
+	}
+	
+	// Actually perform the operation.
+    ret = vswprintf(buf, tmplen, format, args);
+
+	// Free up our allocated temporary string if we just wanted to test for
+	// size. So wasteful... If only ISO C had added this function to the
+	// standard...
+	if (tmplen != len)
+		free(buf);
+
+    va_end(args);
+	return ret;
+}
+#endif  // IMPLEMENT_SNWPRINTF

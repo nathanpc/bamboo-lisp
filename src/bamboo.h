@@ -38,7 +38,7 @@ extern "C" {
 		// Standard I/O.
 		#define	_tprintf   wprintf
 		#define	_ftprintf  fwprintf
-		#define _sntprintf swprintf
+		#define _sntprintf snwprintf
 		#define _puttchar  putwchar
 		#define _puttc     putwc
 		#define _gettchar  getwchar
