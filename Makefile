@@ -38,15 +38,15 @@ $(BUILDDIR)/stamp:
 	$(MKDIR) $(@D)
 	$(TOUCH) $@
 
-run: $(TARGET)
+run: $(BUILDDIR)/stamp $(TARGET)
 	$(TARGET)
 
 debug: CFLAGS += -g3 # -DDEBUG
-debug: clean $(TARGET)
+debug: clean $(BUILDDIR)/stamp $(TARGET)
 	$(GDB) $(TARGET)
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
-memcheck: clean $(TARGET)
+memcheck: clean $(BUILDDIR)/stamp $(TARGET)
 	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all --track-origins=yes --log-file=valgrind.log $(TARGET)
 	cat valgrind.log
 
