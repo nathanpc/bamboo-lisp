@@ -5,14 +5,9 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
-#if !defined(AFX_BAMBOOLISP_H__758F6A83_C64F_4861_B2E8_9BBFFAB7465B__INCLUDED_)
-#define AFX_BAMBOOLISP_H__758F6A83_C64F_4861_B2E8_9BBFFAB7465B__INCLUDED_
+#ifndef _BAMBOOWRAPPER_H
+#define _BAMBOOWRAPPER_H
 
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
-
-#include <tchar.h>
 #include <exception>
 #include <vector>
 #include "bamboo.h"
@@ -22,7 +17,11 @@ namespace Bamboo {
 	/**
 	 * Bamboo exception abstraction to handle errors.
 	 */
+#ifdef _MSC_VER
 	class BambooException : public exception {
+#else
+	class BambooException : public std::exception {
+#endif  // _MSC_VER
 	protected:
 		bamboo_error_t m_err;
 		TCHAR *m_type_str;
@@ -95,4 +94,4 @@ namespace Bamboo {
 
 }
 
-#endif // !defined(AFX_BAMBOOLISP_H__758F6A83_C64F_4861_B2E8_9BBFFAB7465B__INCLUDED_)
+#endif  // _BAMBOOWRAPPER_H
