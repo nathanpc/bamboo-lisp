@@ -100,6 +100,7 @@ static TCHAR bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
 static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 static allocation_t *bamboo_allocations = NULL;
 static uint32_t bamboo_gc_iter_counter = 0;
+static env_t *bamboo_root_env = NULL;
 
 // Private methods.
 void putstr(const TCHAR *str);
@@ -157,6 +158,7 @@ bamboo_error_t builtin_macrop(atom_t args, atom_t *result);
 bamboo_error_t builtin_display(atom_t args, atom_t *result);
 bamboo_error_t builtin_concat(atom_t args, atom_t *result);
 bamboo_error_t builtin_newline(atom_t args, atom_t *result);
+bamboo_error_t builtin_display_env(atom_t args, atom_t *result);
 
 // Initialization functions.
 bamboo_error_t populate_builtins(env_t *env);
@@ -182,6 +184,7 @@ bamboo_error_t bamboo_init(env_t *env) {
 
 	// Initialize the root environment.
 	*env = bamboo_env_new(nil);
+	bamboo_root_env = env;
 
 	// Populate the environment with our built-in functions.
 	err = populate_builtins(env);
@@ -301,6 +304,11 @@ bamboo_error_t populate_builtins(env_t *env) {
 	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("NEWLINE"), builtin_newline);
+	IF_ERROR(err)
+		return err;
+	
+	// Misc.
+	err = bamboo_env_set_builtin(*env, _T("DISPLAY-ENV"), builtin_display_env);
 	IF_ERROR(err)
 		return err;
 
@@ -3239,6 +3247,42 @@ bamboo_error_t builtin_newline(atom_t args, atom_t *result) {
 
 	// Print the newline string.
 	putstr(LINEBREAK);
+
+	*result = nil;
+	return BAMBOO_OK;
+}
+
+// (display-env) -> nil
+bamboo_error_t builtin_display_env(atom_t args, atom_t *result) {
+	env_t current;
+	
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 0) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("This function expects no arguments"));
+	}
+
+	// Grab our root environment.
+	current = cdr(*bamboo_root_env);
+
+	// Iterate over the symbols in the environment filtering out built-ins.
+	putstr(_T("symbol\t\tvalue") LINEBREAK);
+	while (!nilp(current)) {
+		atom_t item = car(current);
+		
+		// Filter out any built-ins.
+		if (cdr(item).type == ATOM_TYPE_BUILTIN)
+			goto next_item;
+
+		// Print out the symbol name and its value.
+		_tprintf(SPEC_STR _T("\t\t"), *car(item).value.symbol);
+		bamboo_print_expr(cdr(item));
+		putstr(LINEBREAK);
+
+next_item:
+		// Go to the next item.
+		current = cdr(current);
+	}
 
 	*result = nil;
 	return BAMBOO_OK;
