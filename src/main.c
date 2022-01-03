@@ -13,7 +13,7 @@
 	#ifndef _O_WTEXT
 		#define _O_WTEXT 0x10000
 	#endif  // _O_WTEXT
-	
+
 	// Make sure unicode is enabled.
 	#ifndef __WATCOMC__
 		#ifndef _UNICODE
@@ -96,13 +96,13 @@ int _tmain(void) {
 		err = bamboo_parse_expr(input, &end, &parsed);
 		IF_BAMBOO_ERROR(err) {
 			uint8_t spaces;
-			
+
 			// Show where the user was wrong.
 			_tprintf(_T("%s %s"), input, LINEBREAK);
 			for (spaces = 0; spaces < (end - input); spaces++)
 				_puttchar(_T(' '));
 			_tprintf(_T("^ "));
-			
+
 			// Show the error message.
 			bamboo_print_error(err);
 			_ftprintf(stderr, LINEBREAK);
@@ -180,7 +180,7 @@ int readline(TCHAR *buf, size_t len) {
 		}
 
 		// Append character to the buffer.
-	    buf[i] = (TCHAR)c;
+		buf[i] = (TCHAR)c;
 	}
 
 returnstr:

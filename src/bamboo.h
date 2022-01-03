@@ -195,7 +195,7 @@ env_t bamboo_env_new(env_t parent);
 bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
 bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
 bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
-									  builtin_func_t func);
+	builtin_func_t func);
 
 // Primitive creation.
 atom_t bamboo_int(int64_t num);
@@ -205,11 +205,11 @@ atom_t bamboo_boolean(bool value);
 atom_t bamboo_string(const TCHAR *str);
 atom_t bamboo_builtin(builtin_func_t func);
 bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
-		atom_t *result);
+	atom_t *result);
 
 // Parsing and evaluation.
 bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
-						  atom_t *atom);
+	atom_t *atom);
 bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 
 // Error handling.
