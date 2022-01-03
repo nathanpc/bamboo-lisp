@@ -18,7 +18,7 @@ extern "C" {
 // Unicode support.
 #ifdef _WIN32
 	#include <tchar.h>
-	
+
 	// Make Microsoft's compiler happy about their horrible excuse of an
 	// implementations.
 	#ifdef _MSC_VER
@@ -44,12 +44,13 @@ extern "C" {
 #else
 	#ifdef UNICODE
 		#include <wchar.h>
-	
+		#include <wctype.h>
+
 		// Very basics.
 		typedef wchar_t TCHAR;
 		#define _T(x)   L ## x
 		#define _tmain  main // wmain
-	
+
 		// Standard I/O.
 		#define	_tprintf   wprintf
 		#define	_ftprintf  fwprintf
@@ -69,16 +70,16 @@ extern "C" {
 		#define _tcsdup   wcsdup
 		#define _tcslen   wcslen
 		#define _totupper towupper
-	
+
 		// String conversions.
 		#define _tcstoll wcstoll
 		#define _tcstold wcstold
-	#else	
+	#else
 		// Very basics.
 		typedef char   TCHAR;
 		#define _T(x)  x
 		#define _tmain main
-	
+
 		// Standard I/O.
 		#define	_tprintf   printf
 		#define	_ftprintf  fprintf
@@ -98,7 +99,7 @@ extern "C" {
 		#define _tcsdup   strdup
 		#define _tcslen   strlen
 		#define _totupper toupper
-	
+
 		// String conversions.
 		#define _tcstoll strtoll
 		#define _tcstold strtold
