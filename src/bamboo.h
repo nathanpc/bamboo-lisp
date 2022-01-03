@@ -19,13 +19,28 @@ extern "C" {
 #ifdef _WIN32
 	#include <tchar.h>
 	
-	// Make Microsoft's compiler happy about their horrible implementations.
-	#ifdef UNICODE
-		#define _tcsdup  _wcsdup
-		#define _tcstoll _tcstoi64
-	#else
-		#define _tcsdup  _strdup
-	#endif  // UNICODE
+	// Make Microsoft's compiler happy about their horrible excuse of an
+	// implementations.
+	#ifdef _MSC_VER
+		#ifdef UNICODE
+			#define _tcsdup  _wcsdup
+			#define _tcstoll _tcstoi64
+		#else
+			#define _tcsdup  _strdup
+		#endif  // UNICODE
+	#endif  // _MSC_VER
+
+	// Some compilers (*cough* Open Watcom *cough*) forgot to implement _t
+	// variants of strtoll and strtold.
+	#ifdef __WATCOMC__
+		#ifdef UNICODE
+			#define _tcstoll wcstoll
+			#define _tcstold wcstold
+		#else
+			#define _tcstoll strtoll
+			#define _tcstold strtold
+		#endif  // UNICODE
+	#endif  // __WATCOMC__
 #else
 	#ifdef UNICODE
 		#include <wchar.h>
