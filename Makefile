@@ -17,6 +17,7 @@ TOUCH = touch
 # Directories and Paths
 SRCDIR = src
 BUILDDIR := build
+EXAMPLEDIR := examples
 TARGET = $(BUILDDIR)/$(PROJECT)
 
 # Sources and Flags
@@ -25,7 +26,7 @@ OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.c=.o))
 CFLAGS = -Wall -DUNICODE
 LDFLAGS = 
 
-.PHONY: all run test debug memcheck clean
+.PHONY: all run test debug memcheck examples clean
 all: $(BUILDDIR)/stamp $(TARGET)
 
 $(TARGET): $(OBJECTS)
@@ -50,6 +51,10 @@ memcheck: clean $(BUILDDIR)/stamp $(TARGET)
 	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all --track-origins=yes --log-file=valgrind.log $(TARGET)
 	cat valgrind.log
 
+examples:
+	cd $(EXAMPLEDIR) && $(MAKE)
+
 clean:
 	$(RM) -r $(BUILDDIR)
 	$(RM) valgrind.log
+	cd $(EXAMPLEDIR) && $(MAKE) clean
