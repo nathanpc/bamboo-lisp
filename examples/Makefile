@@ -12,7 +12,7 @@ MKDIR = mkdir -p
 TOUCH = touch
 
 # Sources and Flags
-TARGETS = repl
+TARGETS = repl basic_repl
 CXXTARGETS = cpp_repl
 CFLAGS = -Wall
 LDFLAGS = 
