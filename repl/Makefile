@@ -37,7 +37,7 @@ $(TARGET): $(OBJECTS) $(PREREQS)
 $(BUILDDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-run: 
+run: $(TARGET)
 	$(TARGET)
 
 debug: CFLAGS += -g3 -DDEBUG
