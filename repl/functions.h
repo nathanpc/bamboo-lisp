@@ -8,6 +8,10 @@
 #ifndef REPL_FUNCTIONS_H
 #define REPL_FUNCTIONS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "../src/bamboo.h"
 
 // Custom error codes.
@@ -17,5 +21,9 @@ typedef enum {
 
 // Automatically add all of our built-ins.
 bamboo_error_t repl_populate_builtins(env_t *env);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // REPL_FUNCTIONS_H
