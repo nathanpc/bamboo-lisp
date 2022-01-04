@@ -10,6 +10,7 @@
 # Object and executable files.
 *.obj
 *.exe
+*.o
 build/
 
 # Source Insight
