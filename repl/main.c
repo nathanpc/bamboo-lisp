@@ -45,9 +45,11 @@
 /**
  * Program's main entry point.
  *
- * @return 0 if everything went fine.
+ * @param  argc Number of command-line arguments passed to the program.
+ * @param  argv Command-line arguments passed to the program.
+ * @return      0 if everything went fine.
  */
-int _tmain(void) {
+int _tmain(int argc, char *argv[]) {
 	TCHAR *input;
 	bamboo_error_t err;
 	env_t env;
