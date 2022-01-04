@@ -1987,7 +1987,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 		// Grab the first item of the pair and append it to the string.
 		bamboo_expr_str(&tmp, car(atom));
 		buflen += _tcslen(tmp);
-		*buf = (TCHAR *)realloc(*buf, buflen);
+		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 		if (*buf == NULL)
 			goto err_alloc_pair_str;
 		_tcscat(*buf, tmp);
@@ -2001,7 +2001,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				bamboo_expr_str(&tmp, car(atom));
 
 				buflen += _tcslen(tmp) + 1;
-				*buf = (TCHAR *)realloc(*buf, buflen);
+				*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 				if (*buf == NULL)
 					goto err_alloc_pair_str;
 
@@ -2015,7 +2015,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				bamboo_expr_str(&tmp, atom);
 
 				buflen += _tcslen(tmp) + 3;
-				*buf = (TCHAR *)realloc(*buf, buflen);
+				*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 				if (*buf == NULL)
 					goto err_alloc_pair_str;
 
@@ -2066,7 +2066,7 @@ err_alloc_pair_str:
 			bamboo_expr_str(&tmp, car(cdr(atom)));
 
 			buflen += _tcslen(tmp);
-			*buf = (TCHAR *)realloc(*buf, buflen);
+			*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 			if (*buf == NULL)
 				goto err_alloc_closure_str;
 
@@ -2078,7 +2078,7 @@ err_alloc_pair_str:
 		_tcscat(*buf, _T(" "));
 		bamboo_expr_str(&tmp, cdr(cdr(atom)));
 		buflen += _tcslen(tmp);
-		*buf = (TCHAR *)realloc(*buf, buflen);
+		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 		if (*buf == NULL)
 			goto err_alloc_closure_str;
 		_tcscat(*buf, tmp);
@@ -2107,7 +2107,7 @@ err_alloc_closure_str:
 			bamboo_expr_str(&tmp, car(cdr(atom)));
 
 			buflen += _tcslen(tmp);
-			*buf = (TCHAR *)realloc(*buf, buflen);
+			*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 			if (*buf == NULL)
 				goto err_alloc_macro_str;
 
@@ -2119,7 +2119,7 @@ err_alloc_closure_str:
 		_tcscat(*buf, _T(" "));
 		bamboo_expr_str(&tmp, cdr(cdr(atom)));
 		buflen += _tcslen(tmp);
-		*buf = (TCHAR *)realloc(*buf, buflen);
+		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 		if (*buf == NULL)
 			goto err_alloc_macro_str;
 		_tcscat(*buf, tmp);
