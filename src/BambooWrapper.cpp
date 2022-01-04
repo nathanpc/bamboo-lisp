@@ -279,7 +279,11 @@ BambooException::~BambooException() {
  * @return Descriptive error message.
  */
 const char* BambooException::what() const throw() {
+#ifdef UNICODE
+	return "An error occured. Use error_detail() for more information.";
+#else
 	return bamboo_error_detail();
+#endif  // UNICODE
 }
 
 /**
