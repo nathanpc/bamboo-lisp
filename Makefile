@@ -3,12 +3,9 @@
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
-# Project
-PROJECT = bamboo
-PLATFORM := $(shell uname -s)
-
 # Tools
 CC = gcc
+CXX = g++
 RM = rm -f
 GDB = gdb
 MKDIR = mkdir -p
@@ -19,49 +16,48 @@ SRCDIR = src
 REPLDIR = repl
 BUILDDIR := build
 EXAMPLEDIR := examples
-TARGET = $(BUILDDIR)/$(PROJECT)
 
 # Sources and Flags
-SOURCES += $(SRCDIR)/bamboo.c
-OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.c=.o))
-REPLSRC = $(REPLDIR)/main.c $(REPLDIR)/input.c $(REPLDIR)/functions.c
-OBJECTS += $(patsubst $(REPLDIR)/%,$(BUILDDIR)/%,$(REPLSRC:.c=.o))
+SOURCES += $(SRCDIR)/bamboo.c $(SRCDIR)/BambooWrapper.cpp
+OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BUILDDIR)/%.o, $(SOURCES))
+OBJECTS := $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(OBJECTS))
 CFLAGS = -Wall -Wno-psabi -DUNICODE
 LDFLAGS = 
 
-.PHONY: all run test debug memcheck examples clean
-all: $(BUILDDIR)/stamp $(TARGET)
+.PHONY: all compile run test debug memcheck repl examples clean
+all: compile repl
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+compile: $(BUILDDIR)/stamp $(OBJECTS)
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILDDIR)/%.o: $(REPLDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
+	$(CC) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(BUILDDIR)/stamp:
 	$(MKDIR) $(@D)
 	$(TOUCH) $@
 
-run: $(BUILDDIR)/stamp $(TARGET)
-	$(TARGET)
+run: compile
+	cd $(REPLDIR) && $(MAKE) run
 
-debug: CFLAGS += -g3 # -DDEBUG
-debug: clean $(BUILDDIR)/stamp $(TARGET)
-	$(GDB) $(TARGET)
+debug: CFLAGS += -g3 -DDEBUG
+debug: clean compile
+	cd $(REPLDIR) && $(MAKE) debug
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
-memcheck: clean $(BUILDDIR)/stamp $(TARGET)
-	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all \
-		--track-origins=yes --log-file=valgrind.log $(TARGET)
-	cat valgrind.log
+memcheck: clean compile
+	cd $(REPLDIR) && $(MAKE) memcheck
 
-examples:
+repl: compile
+	cd $(REPLDIR) && $(MAKE)
+
+examples: compile
 	cd $(EXAMPLEDIR) && $(MAKE)
 
 clean:
 	$(RM) -r $(BUILDDIR)
 	$(RM) valgrind.log
+	cd $(REPLDIR) && $(MAKE) clean
 	cd $(EXAMPLEDIR) && $(MAKE) clean
