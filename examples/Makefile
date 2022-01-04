@@ -12,7 +12,8 @@ MKDIR = mkdir -p
 TOUCH = touch
 
 # Sources and Flags
-TARGETS = repl basic_repl
+BAMBOODIR := ../src
+TARGETS = improved_repl basic_repl
 CXXTARGETS = cpp_repl
 CFLAGS = -Wall -Wno-psabi
 LDFLAGS = 
@@ -22,12 +23,12 @@ all: $(TARGETS) $(CXXTARGETS)
 
 $(TARGETS): bamboo.o
 
-$(CXXTARGETS): bamboo.o
+$(CXXTARGETS): bamboo.o BambooWrapper.o
 
-bamboo.o: ../src/bamboo.c
+bamboo.o: $(BAMBOODIR)/bamboo.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-BambooWrapper.o: ../src/BambooWrapper.cpp
+BambooWrapper.o: $(BAMBOODIR)/BambooWrapper.cpp
 	$(CXX) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(TARGETS): %: %.o bamboo.o
