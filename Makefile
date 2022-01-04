@@ -16,14 +16,17 @@ TOUCH = touch
 
 # Directories and Paths
 SRCDIR = src
+REPLDIR = repl
 BUILDDIR := build
 EXAMPLEDIR := examples
 TARGET = $(BUILDDIR)/$(PROJECT)
 
 # Sources and Flags
-SOURCES += $(SRCDIR)/main.c $(SRCDIR)/bamboo.c
+SOURCES += $(SRCDIR)/bamboo.c
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.c=.o))
-CFLAGS = -Wall -DUNICODE
+REPLSRC = $(REPLDIR)/main.c $(REPLDIR)/input.c $(REPLDIR)/functions.c
+OBJECTS += $(patsubst $(REPLDIR)/%,$(BUILDDIR)/%,$(REPLSRC:.c=.o))
+CFLAGS = -Wall -Wno-psabi -DUNICODE
 LDFLAGS = 
 
 .PHONY: all run test debug memcheck examples clean
@@ -33,6 +36,9 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.o: $(REPLDIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILDDIR)/stamp:
@@ -48,7 +54,8 @@ debug: clean $(BUILDDIR)/stamp $(TARGET)
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
 memcheck: clean $(BUILDDIR)/stamp $(TARGET)
-	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all --track-origins=yes --log-file=valgrind.log $(TARGET)
+	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all \
+		--track-origins=yes --log-file=valgrind.log $(TARGET)
 	cat valgrind.log
 
 examples:
