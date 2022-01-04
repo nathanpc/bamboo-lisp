@@ -3,17 +3,10 @@
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
+include ../variables.mk
+
 # Project
 PROJECT = bamboo
-PLATFORM := $(shell uname -s)
-
-# Tools
-CC = gcc
-CXX = g++
-RM = rm -f
-GDB = gdb
-MKDIR = mkdir -p
-TOUCH = touch
 
 # Directories and Paths
 BUILDDIR := ../build
@@ -23,8 +16,6 @@ TARGET = $(BUILDDIR)/$(PROJECT)
 PREREQS = $(BUILDDIR)/bamboo.o
 SOURCES = main.c input.c functions.c
 OBJECTS := $(patsubst %.c, $(BUILDDIR)/%.o, $(SOURCES))
-CFLAGS = -Wall -Wno-psabi -DUNICODE
-LDFLAGS = 
 
 .PHONY: all compile run debug memcheck clean
 all: $(TARGET)

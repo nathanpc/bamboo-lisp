@@ -3,13 +3,7 @@
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
-# Tools
-CC = gcc
-CXX = g++
-RM = rm -f
-GDB = gdb
-MKDIR = mkdir -p
-TOUCH = touch
+include ../variables.mk
 
 # Sources and Flags
 BAMBOODIR := ../src

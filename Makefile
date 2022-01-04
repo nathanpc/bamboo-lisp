@@ -3,13 +3,7 @@
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
-# Tools
-CC = gcc
-CXX = g++
-RM = rm -f
-GDB = gdb
-MKDIR = mkdir -p
-TOUCH = touch
+include variables.mk
 
 # Directories and Paths
 SRCDIR = src
@@ -21,8 +15,6 @@ EXAMPLEDIR := examples
 SOURCES += $(SRCDIR)/bamboo.c $(SRCDIR)/BambooWrapper.cpp
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BUILDDIR)/%.o, $(SOURCES))
 OBJECTS := $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(OBJECTS))
-CFLAGS = -Wall -Wno-psabi -DUNICODE
-LDFLAGS = 
 
 .PHONY: all compile run test debug memcheck repl examples clean
 all: compile repl
