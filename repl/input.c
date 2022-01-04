@@ -25,6 +25,7 @@ typedef int TINT;
 int readline(TCHAR *buf, size_t len) {
 	uint16_t i;
 	int16_t openparens = 0;
+	int16_t paren_index = 0;
 	bool instring = false;
 
 	// Put some safe guards in place.
@@ -59,7 +60,9 @@ int readline(TCHAR *buf, size_t len) {
 				goto returnstr;
 			}
 
-			_tprintf(_T("  "));
+			// Add some indentation into the mix.
+			for (paren_index = 0; paren_index <= openparens; paren_index++)
+				_tprintf(_T("  "));
 		}
 
 		// Append character to the buffer.
