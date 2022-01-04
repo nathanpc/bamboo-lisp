@@ -14,6 +14,7 @@ typedef int TINT;
 #endif  // UNICODE
 
 #include "input.h"
+#include <stdio.h>
 
 /**
  * Reads the user input like a command prompt.

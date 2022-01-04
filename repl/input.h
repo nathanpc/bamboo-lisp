@@ -9,6 +9,7 @@
 #define REPL_INPUT_H
 
 #include "../src/bamboo.h"
+#include <stddef.h>
 
 int readline(TCHAR *buf, size_t len);
 
