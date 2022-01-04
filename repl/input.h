@@ -11,6 +11,7 @@
 #include "../src/bamboo.h"
 #include <stddef.h>
 
-int readline(TCHAR *buf, size_t len);
+void repl_init(void);
+int repl_readline(TCHAR *buf, size_t len);
 
 #endif  // REPL_INPUT_H

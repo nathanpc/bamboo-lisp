@@ -24,3 +24,13 @@ endif
 # Flags
 CFLAGS  = -Wall -Wno-psabi -DUNICODE
 LDFLAGS = 
+
+# Enable GNU Readline for Linux and OS X.
+ifeq ($(PLATFORM), Linux)
+	CFLAGS  += -DUSE_GNU_READLINE
+	LDFLAGS += -lreadline
+endif
+ifeq ($(PLATFORM), Darwin)
+	CFLAGS  += -DUSE_GNU_READLINE
+	LDFLAGS += -lreadline
+endif

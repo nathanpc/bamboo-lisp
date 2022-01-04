@@ -84,7 +84,8 @@ int _tmain(int argc, char *argv[]) {
 	}
 
 	// Start the REPL.
-	while (!readline(input, REPL_INPUT_MAX_LEN)) {
+	repl_init();
+	while (!repl_readline(input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
 		const TCHAR *end;

@@ -15,6 +15,19 @@ typedef int TINT;
 
 #include "input.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifdef USE_GNU_READLINE
+	#include <readline/readline.h>
+	#include <readline/history.h>
+#endif  // USE_GNU_READLINE
+
+/**
+ * Initializes the REPL.
+ */
+void repl_init(void) {
+	// Placeholder for future things.
+}
 
 /**
  * Reads the user input like a command prompt.
@@ -23,7 +36,36 @@ typedef int TINT;
  * @param  len Maximum length to read the user input including NULL terminator.
  * @return     Non-zero to break out of the REPL loop.
  */
-int readline(TCHAR *buf, size_t len) {
+int repl_readline(TCHAR *buf, size_t len) {
+#ifdef USE_GNU_READLINE
+	char *line;
+	size_t linelen = 0;
+
+	// Read the line using GNU Readline.
+	line = readline("> ");
+	if (line == NULL)
+		return -1;
+
+	// Check if the line isn't too long.
+	linelen = strlen(line);
+	if (linelen > len)
+		return linelen;
+
+	// Add the line to the history.
+	if (linelen > 0)
+		add_history(line);
+
+#ifdef UNICODE
+	// Convert our string to a wide string for the buffer.
+	mbstowcs(buf, line, len);
+#endif
+
+	// Free our buffer.
+	free(line);
+
+	return 0;
+#else
+	// Implement our own line reader.
 	uint16_t i;
 	int16_t openparens = 0;
 	int16_t paren_index = 0;
@@ -64,6 +106,7 @@ int readline(TCHAR *buf, size_t len) {
 			// Add some indentation into the mix.
 			for (paren_index = 0; paren_index <= openparens; paren_index++)
 				_tprintf(_T("  "));
+			break;
 		}
 
 		// Append character to the buffer.
@@ -72,4 +115,5 @@ int readline(TCHAR *buf, size_t len) {
 
 returnstr:
 	return 0;
+#endif  // USE_GNU_READLINE
 }
