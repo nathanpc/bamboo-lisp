@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 			// Print the evaluated result.
 			bamboo_print_expr(result);
 			std::cout << std::endl;
-		} catch (Bamboo::BambooException e) {
+		} catch (Bamboo::BambooException& e) {
 			// Print the error encountered.
 			std::cerr << e.what() << std::endl;
 		}

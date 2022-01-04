@@ -14,7 +14,7 @@ TOUCH = touch
 # Sources and Flags
 TARGETS = repl basic_repl
 CXXTARGETS = cpp_repl
-CFLAGS = -Wall
+CFLAGS = -Wall -Wno-psabi
 LDFLAGS = 
 
 .PHONY: all clean
