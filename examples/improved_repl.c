@@ -46,36 +46,39 @@ int main(void) {
 	while (!readline(input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
-		const char *end;
+		const char *end = input;
 
-		// Parse the user's input.
-		err = bamboo_parse_expr(input, &end, &parsed);
-		IF_BAMBOO_ERROR(err) {
-			uint8_t spaces;
+		// Check if we've parsed all of the statements in the expression.
+		while (*end != '\0') {
+			// Parse the user's input.
+			err = bamboo_parse_expr(end, &end, &parsed);
+			IF_BAMBOO_ERROR(err) {
+				uint8_t spaces;
 
-			// Show where the user was wrong.
-			printf("%s %s", input, LINEBREAK);
-			for (spaces = 0; spaces < (end - input); spaces++)
-				putchar(' ');
-			printf("^ ");
+				// Show where the user was wrong.
+				printf("%s %s", input, LINEBREAK);
+				for (spaces = 0; spaces < (end - input); spaces++)
+					putchar(' ');
+				printf("^ ");
 
-			// Show the error message.
-			bamboo_print_error(err);
-			fprintf(stderr, LINEBREAK);
+				// Show the error message.
+				bamboo_print_error(err);
+				fprintf(stderr, LINEBREAK);
 
-			continue;
+				continue;
+			}
+
+			// Evaluate the parsed expression.
+			err = bamboo_eval_expr(parsed, env, &result);
+			IF_BAMBOO_ERROR(err) {
+				bamboo_print_error(err);
+				fprintf(stderr, LINEBREAK);
+
+				continue;
+			}
 		}
 
-		// Evaluate the parsed expression.
-		err = bamboo_eval_expr(parsed, env, &result);
-		IF_BAMBOO_ERROR(err) {
-			bamboo_print_error(err);
-			fprintf(stderr, LINEBREAK);
-
-			continue;
-		}
-
-		// Print the evaluated result.
+		// Print the last evaluated result.
 		bamboo_print_expr(result);
 		printf(LINEBREAK);
 	}

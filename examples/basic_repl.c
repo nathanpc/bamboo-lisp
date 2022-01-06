@@ -24,28 +24,31 @@ int main(void) {
 	while (getline(&input, &inputlen, stdin) != -1) {
 		atom_t parsed;
 		atom_t result;
-		const char *end;
+		const char *end = input;
 
-		// Parse the user's input.
-		err = bamboo_parse_expr(input, &end, &parsed);
-		IF_BAMBOO_ERROR(err) {
-			// Show the error message.
-			bamboo_print_error(err);
-			fprintf(stderr, "\n");
+		// Check if we've parsed all of the statements in the expression.
+		while (*end != '\0') {
+			// Parse the user's input.
+			err = bamboo_parse_expr(end, &end, &parsed);
+			IF_BAMBOO_ERROR(err) {
+				// Show the error message.
+				bamboo_print_error(err);
+				fprintf(stderr, "\n");
 
-			continue;
+				continue;
+			}
+
+			// Evaluate the parsed expression.
+			err = bamboo_eval_expr(parsed, env, &result);
+			IF_BAMBOO_ERROR(err) {
+				bamboo_print_error(err);
+				fprintf(stderr, "\n");
+
+				continue;
+			}
 		}
 
-		// Evaluate the parsed expression.
-		err = bamboo_eval_expr(parsed, env, &result);
-		IF_BAMBOO_ERROR(err) {
-			bamboo_print_error(err);
-			fprintf(stderr, "\n");
-
-			continue;
-		}
-
-		// Print the evaluated result and prompt the user for more.
+		// Print the last evaluated result and prompt the user for more.
 		bamboo_print_expr(result);
 		printf("\n> ");
 	}

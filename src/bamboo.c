@@ -118,8 +118,10 @@ void list_set(atom_t list, uint16_t index, atom_t value);
 void list_reverse(atom_t *list);
 atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const TCHAR *str, token_t *token);
-bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom);
-bamboo_error_t parse_primitive(const token_t *token, atom_t *atom);
+bamboo_error_t parse_hash_expr(const token_t *token, const TCHAR **end,
+	atom_t *atom);
+bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
+	atom_t *atom);
 bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
 	atom_t *atom);
 bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom);
@@ -773,7 +775,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 		token->start = NULL;
 		token->end = NULL;
 
-		return bamboo_error(BAMBOO_ERROR_SYNTAX, _T("Empty line"));
+		return bamboo_error(BAMBOO_ERROR_EMPTY, _T("Empty line"));
 	}
 
 	// Set the starting point of our token.
@@ -799,7 +801,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
  * @return       BAMBOO_OK if the parsing was successful.
  */
 bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
-						  atom_t *atom) {
+								 atom_t *atom) {
 	token_t token;
 	bamboo_error_t err;
 
@@ -835,7 +837,7 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 
 		return BAMBOO_QUOTE_END;
 	default:
-		return parse_primitive(&token, atom);
+		return parse_primitive(&token, end, atom);
 	}
 
 	return BAMBOO_ERROR_UNKNOWN;
@@ -846,32 +848,32 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
  *
  * @param  token Pointer to token structure that holds the beginning and the end
  *               of a token string.
+ * @param  end   Pointer to the end of the last parsed part of the expression.
  * @param  atom  Pointer to an atom structure that will hold the parsed atom.
  * @return       BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
+bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
+							   atom_t *atom) {
 	TCHAR *buf;
 	TCHAR *buftmp;
 	const TCHAR *tmp;
-	const TCHAR *start = token->start;
-	const TCHAR *end = token->end;
 #ifndef _tcstold
 	int cret = 0;
 #endif
 
 	// Check if we are dealing with a hash expression.
-	if (start[0] == _T('#'))
-		return parse_hash_expr(token, atom);
+	if (token->start[0] == _T('#'))
+		return parse_hash_expr(token, end, atom);
 
 	// Check if we are dealing with a number of some kind.
-	if (((start[0] >= _T('0')) && (start[0] <= _T('9'))) ||
-			(start[0] == _T('+')) || (start[0] == _T('-'))) {
+	if (((token->start[0] >= _T('0')) && (token->start[0] <= _T('9'))) ||
+			(token->start[0] == _T('+')) || (token->start[0] == _T('-'))) {
 		int64_t integer;
 		long double dfloat;
 
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		// Create a string with only the number.
-		buf = strcpyse(start, end);
+		buf = strcpyse(token->start, token->end);
 
 		// Check if we just have a simple + or - function call.
 		if (((buf[0] == _T('+')) || (buf[0] == _T('-'))) &&
@@ -886,15 +888,15 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 			integer = _atoi64(buf);
 
 			free(buf);
-			buf = end;
+			buf = token->end;
 		} else {
 			free(buf);
 			buf = NULL;
 		}
 #else
-		integer = _tcstoll(start, &buf, 0);
+		integer = _tcstoll(token->start, &buf, 0);
 #endif  // _MSC_VER
-		if (buf == end) {
+		if (buf == token->end) {
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
 				*atom = nil;
@@ -912,21 +914,24 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 			atom->type = ATOM_TYPE_INTEGER;
 			atom->value.integer = integer;
 
+			// Set the end pointer.
+			*end = token->end;
+
 			return BAMBOO_OK;
 		}
 
 		// Try to parse an float.
 #ifndef _tcstold
-		cret = _stscanf(start, "%lg", &dfloat);
+		cret = _stscanf(token->start, "%lg", &dfloat);
 		if ((cret != 0) && (cret != EOF)) {
-			buf = end;
+			buf = token->end;
 		} else {
 			buf = NULL;
 		}
 #else
-		dfloat = _tcstold(start, &buf);
+		dfloat = _tcstold(token->start, &buf);
 #endif  // _tcstold
-		if (buf == end) {
+		if (buf == token->end) {
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
 				*atom = nil;
@@ -944,6 +949,9 @@ bamboo_error_t parse_primitive(const token_t *token, atom_t *atom) {
 			atom->type = ATOM_TYPE_FLOAT;
 			atom->value.dfloat = dfloat;
 
+			// Set the end pointer.
+			*end = token->end;
+
 			return BAMBOO_OK;
 		}
 	}
@@ -953,7 +961,7 @@ symbolparser:
 #endif  // _MSC_VER
 
 	// Allocate string for symbol upper-case conversion.
-	buf = (TCHAR *)malloc(sizeof(TCHAR) * (end - start + 1));
+	buf = (TCHAR *)malloc(sizeof(TCHAR) * (token->end - token->start + 1));
 	if (buf == NULL) {
 		return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate string ")
 			_T("for symbol upper-case conversion"));
@@ -961,8 +969,8 @@ symbolparser:
 
 	// Convert the symbol to upper-case.
 	buftmp = buf;
-	tmp = start;
-	while (tmp != end)
+	tmp = token->start;
+	while (tmp != token->end)
 		*buftmp++ = _totupper(*tmp++);
 	*buftmp = _T('\0');
 
@@ -974,6 +982,9 @@ symbolparser:
 		*atom = bamboo_symbol(buf);
 	}
 
+	// Set the end pointer.
+	*end = token->end;
+
 	// Clean up and return OK.
 	free(buf);
 	return BAMBOO_OK;
@@ -984,10 +995,12 @@ symbolparser:
  *
  * @param  token Pointer to token structure that holds the beginning and the end
  *               of a token string.
+ * @param  end   Pointer to the end of the last parsed part of the expression.
  * @param  atom  Pointer to an atom structure that will hold the parsed atom.
  * @return       BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
+bamboo_error_t parse_hash_expr(const token_t *token, const TCHAR **end,
+							   atom_t *atom) {
 	// Check if we don't have an invalid syntax.
 	if ((token->start + 1) == token->end) {
 		return bamboo_error(BAMBOO_ERROR_SYNTAX,
@@ -1000,10 +1013,12 @@ bamboo_error_t parse_hash_expr(const token_t *token, atom_t *atom) {
 	case _T('F'):
 	case _T('f'):
 		*atom = bamboo_boolean(false);
+		*end = token->end;
 		return BAMBOO_OK;
 	case _T('T'):
 	case _T('t'):
 		*atom = bamboo_boolean(true);
+		*end = token->end;
 		return BAMBOO_OK;
 	default:
 		return bamboo_error(BAMBOO_ERROR_SYNTAX,
@@ -1120,9 +1135,24 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 			// We are dealing with a special condition.
 			switch (err) {
 			case BAMBOO_PAREN_END:
-				// We've reached the end of a list. Move the end of the token
-				// in the last stack and return OK.
+				// We've reached the end of a list.
 				*end = token.end;
+				/*
+				// Check if we have something after this list ended.
+				err = lex(*end, &test_token);
+				IF_BAMBOO_ERROR(err) {
+					// Check if we just finished parsing the string.
+					if (err == BAMBOO_ERROR_EMPTY)
+						return BAMBOO_OK;
+
+					// Looks like we actually errored out...
+					return err;
+				}
+
+				// Advance to the next token and continue parsing.
+				token.end = test_token.start;
+				goto continue_parsing;
+				*/
 				return BAMBOO_OK;
 			case BAMBOO_QUOTE_END:
 				// We've just ended dealing with a quote shorthand. Let's ignore
@@ -1569,7 +1599,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 
 		return BAMBOO_OK;
 	} else if (op.type != ATOM_TYPE_CLOSURE) {
-		// Looks like we don't have anything that's _T("apply")able.
+		// Looks like we don't have anything that's "apply"able.
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 			_T("Applyable op must be either a built-in or a closure"));
 	}
@@ -2173,6 +2203,9 @@ void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err) {
 		break;
 	case BAMBOO_ERROR_SYNTAX:
 		*buf = _tcsdup(_T("SYNTAX ERROR"));
+		break;
+	case BAMBOO_ERROR_EMPTY:
+		*buf = _tcsdup(_T("EMPTY STATEMENT"));
 		break;
 	case BAMBOO_ERROR_UNBOUND:
 		*buf = _tcsdup(_T("UNBOUND SYMBOL ERROR"));

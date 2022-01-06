@@ -88,40 +88,49 @@ int _tmain(int argc, char *argv[]) {
 	while (!repl_readline(input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
-		const TCHAR *end;
+		const TCHAR *end = input;
 
-		// Parse the user's input.
-		err = bamboo_parse_expr(input, &end, &parsed);
-		IF_BAMBOO_ERROR(err) {
-			uint8_t spaces;
+		// Check if we've parsed all of the statements in the expression.
+		while (*end != _T('\0')) {
+#ifdef DEBUG
+			// Check out our tokens.
+			bamboo_print_tokens(end);
+			_tprintf(LINEBREAK);
+#endif  // DEBUG
 
-			// Show where the user was wrong.
-			_tprintf(_T("%s %s"), input, LINEBREAK);
-			for (spaces = 0; spaces < (end - input); spaces++)
-				_puttchar(_T(' '));
-			_tprintf(_T("^ "));
+			// Parse the user's input.
+			err = bamboo_parse_expr(end, &end, &parsed);
+			IF_BAMBOO_ERROR(err) {
+				uint8_t spaces;
 
-			// Show the error message.
-			bamboo_print_error(err);
-			_ftprintf(stderr, LINEBREAK);
+				// Show where the user was wrong.
+				_tprintf(_T("%s %s"), input, LINEBREAK);
+				for (spaces = 0; spaces < (end - input); spaces++)
+					_puttchar(_T(' '));
+				_tprintf(_T("^ "));
 
-			continue;
-		}
+				// Show the error message.
+				bamboo_print_error(err);
+				_ftprintf(stderr, LINEBREAK);
 
-		// Evaluate the parsed expression.
-		err = bamboo_eval_expr(parsed, env, &result);
-		IF_BAMBOO_ERROR(err) {
-			// Check if we just got a quit situation.
-			if (err == (bamboo_error_t)BAMBOO_REPL_QUIT) {
-				retval = result.value.integer;
-				goto quit;
+				continue;
 			}
 
-			// Exaplain the real issue then...
-			bamboo_print_error(err);
-			_ftprintf(stderr, LINEBREAK);
+			// Evaluate the parsed expression.
+			err = bamboo_eval_expr(parsed, env, &result);
+			IF_BAMBOO_ERROR(err) {
+				// Check if we just got a quit situation.
+				if (err == (bamboo_error_t)BAMBOO_REPL_QUIT) {
+					retval = result.value.integer;
+					goto quit;
+				}
 
-			continue;
+				// Exaplain the real issue then...
+				bamboo_print_error(err);
+				_ftprintf(stderr, LINEBREAK);
+
+				continue;
+			}
 		}
 
 		// Print the evaluated result.
