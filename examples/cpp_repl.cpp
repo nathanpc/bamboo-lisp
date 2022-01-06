@@ -42,10 +42,17 @@ int main(int argc, char *argv[]) {
 
 	// Start the REPL.
 	while (!readline(input, REPL_INPUT_MAX_LEN)) {
+		atom_t parsed;
+		atom_t result;
+		const char *end = input;
+
 		try {
-			// Parse the user's input and evaluate the expression.
-			atom_t parsed = bamboo.parse_expr(input);
-			atom_t result = bamboo.eval_expr(parsed);
+			// Check if we've parsed all of the statements in the expression.
+			while (*end != '\0') {
+				// Parse the user's input and evaluate the expression.
+				parsed = bamboo.parse_expr(end, &end);
+				result = bamboo.eval_expr(parsed);
+			}
 
 			// Print the evaluated result.
 			bamboo_print_expr(result);
