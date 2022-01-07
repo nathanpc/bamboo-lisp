@@ -11,7 +11,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include <errno.h>
+#ifndef _WIN32_WCE
+	#include <errno.h>
+#endif  // _WIN32_WCE
 #include <limits.h>
 #include <float.h>
 #include <math.h>
@@ -885,7 +887,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 		// Try to parse an integer.
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		if (!contains_point(buf)) {
-			integer = _atoi64(buf);
+			integer = _ttoi64(buf);
 
 			free(buf);
 			buf = token->end;
@@ -897,6 +899,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 		integer = _tcstoll(token->start, &buf, 0);
 #endif  // _MSC_VER
 		if (buf == token->end) {
+#ifndef _WIN32_WCE
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
 				*atom = nil;
@@ -909,6 +912,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 						_T("An integer underflow occured while parsing"));
 				}
 			}
+#endif  // _WIN32_WCE
 
 			// Populate the atom.
 			atom->type = ATOM_TYPE_INTEGER;
@@ -932,6 +936,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 		dfloat = _tcstold(token->start, &buf);
 #endif  // _tcstold
 		if (buf == token->end) {
+#ifndef _WIN32_WCE
 			// Check for overflows/underflows.
 			if (errno == ERANGE) {
 				*atom = nil;
@@ -944,6 +949,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 						_T("An float underflow occured while parsing"));
 				}
 			}
+#endif  // _WIN32_WCE
 
 			// Populate the atom.
 			atom->type = ATOM_TYPE_FLOAT;
