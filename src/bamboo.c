@@ -50,15 +50,6 @@
 	int snwprintf(wchar_t *buf, size_t len, const wchar_t *format, ...);
 #endif  // snwprintf
 
-// Make sure we use the right format specifier for printf and wprintf.
-#ifdef UNICODE
-	#define SPEC_CHR _T("%lc")
-	#define SPEC_STR _T("%ls")
-#else
-	#define SPEC_CHR _T("%c")
-	#define SPEC_STR _T("%s")
-#endif  // UNICODE
-
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
 

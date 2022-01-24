@@ -17,6 +17,7 @@ extern "C" {
 
 // Unicode support.
 #ifdef _WIN32
+	#include <windows.h>
 	#include <tchar.h>
 
 	// Make Microsoft's compiler happy about their horrible excuse of an
@@ -56,6 +57,7 @@ extern "C" {
 		// Standard I/O.
 		#define	_tprintf   wprintf
 		#define	_ftprintf  fwprintf
+		#define _stprintf  swprintf
 		#define _sntprintf snwprintf
 		#define _puttchar  putwchar
 		#define _puttc     putwc
@@ -85,6 +87,7 @@ extern "C" {
 		// Standard I/O.
 		#define	_tprintf   printf
 		#define	_ftprintf  fprintf
+		#define _stprintf  sprintf
 		#define _sntprintf snprintf
 		#define _puttchar  putchar
 		#define _puttc     putc
@@ -107,6 +110,15 @@ extern "C" {
 		#define _tcstold strtold
 	#endif  // UNICODE
 #endif  // _WIN32
+
+// Make sure we use the right format specifier for printf and wprintf.
+#ifdef UNICODE
+	#define SPEC_CHR _T("%lc")
+	#define SPEC_STR _T("%ls")
+#else
+	#define SPEC_CHR _T("%c")
+	#define SPEC_STR _T("%s")
+#endif  // UNICODE
 
 // Global definitions.
 #ifndef LINEBREAK
