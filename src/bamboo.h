@@ -24,7 +24,9 @@ extern "C" {
 	#ifdef _MSC_VER
 		#ifdef UNICODE
 			#define _tcsdup  _wcsdup
-			#define _tcstoll _tcstoi64
+			#ifndef _tcstoll
+				#define _tcstoll _tcstoi64
+			#endif  // _tcstoll
 		#else
 			#define _tcsdup  _strdup
 		#endif  // UNICODE

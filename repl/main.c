@@ -121,7 +121,7 @@ int _tmain(int argc, char *argv[]) {
 			IF_BAMBOO_ERROR(err) {
 				// Check if we just got a quit situation.
 				if (err == (bamboo_error_t)BAMBOO_REPL_QUIT) {
-					retval = result.value.integer;
+					retval = (int)result.value.integer;
 					goto quit;
 				}
 
