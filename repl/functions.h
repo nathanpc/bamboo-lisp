@@ -22,6 +22,9 @@ typedef enum {
 // Automatically add all of our built-ins.
 bamboo_error_t repl_populate_builtins(env_t *env);
 
+// Misc. utilities.
+bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result);
+
 #ifdef __cplusplus
 }
 #endif

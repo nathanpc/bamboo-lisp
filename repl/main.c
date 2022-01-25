@@ -40,7 +40,8 @@
 // Private definitions.
 #define REPL_INPUT_MAX_LEN 512
 
-// Private methods.
+// Private variables.
+static env_t repl_env;
 
 /**
  * Program's main entry point.
@@ -52,7 +53,6 @@
 int _tmain(int argc, char *argv[]) {
 	TCHAR *input;
 	bamboo_error_t err;
-	env_t env;
 	int retval = 0;
 
 #ifdef UNICODE
@@ -66,12 +66,12 @@ int _tmain(int argc, char *argv[]) {
 #endif  // UNICODE
 
 	// Initialize the interpreter.
-	err = bamboo_init(&env);
+	err = bamboo_init(&repl_env);
 	IF_BAMBOO_ERROR(err)
 		return err;
 
 	// Add our own REPL-related built-in functions.
-	err = repl_populate_builtins(&env);
+	err = repl_populate_builtins(&repl_env);
 	IF_BAMBOO_ERROR(err)
 		return err;
 
@@ -117,7 +117,7 @@ int _tmain(int argc, char *argv[]) {
 			}
 
 			// Evaluate the parsed expression.
-			err = bamboo_eval_expr(parsed, env, &result);
+			err = bamboo_eval_expr(parsed, repl_env, &result);
 			IF_BAMBOO_ERROR(err) {
 				// Check if we just got a quit situation.
 				if (err == (bamboo_error_t)BAMBOO_REPL_QUIT) {
@@ -125,7 +125,7 @@ int _tmain(int argc, char *argv[]) {
 					goto quit;
 				}
 
-				// Exaplain the real issue then...
+				// Explain the real issue then...
 				bamboo_print_error(err);
 				_ftprintf(stderr, LINEBREAK);
 
@@ -140,7 +140,7 @@ int _tmain(int argc, char *argv[]) {
 
 quit:
 	// Free up resources.
-	err = bamboo_destroy(&env);
+	err = bamboo_destroy(&repl_env);
 	free(input);
 
 	// Return the correct code.
