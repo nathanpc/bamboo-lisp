@@ -211,6 +211,7 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
 bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
 bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 	builtin_func_t func);
+env_t* bamboo_get_root_env(void);
 
 // Primitive creation.
 atom_t bamboo_int(int64_t num);

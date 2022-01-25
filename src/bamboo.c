@@ -1821,6 +1821,15 @@ bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
 	return bamboo_env_set(env, bamboo_symbol(name), bamboo_builtin(func));
 }
 
+/**
+ * Gets the root environment current in use by the interpreter.
+ *
+ * @return Pointer to the current root environment.
+ */
+env_t *bamboo_get_root_env(void) {
+	return bamboo_root_env;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //                             Garbage Collection                             //
