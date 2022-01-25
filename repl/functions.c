@@ -32,6 +32,9 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 	err = BAMBOO_OK;
 	*result = nil;
 
+	// Just remind the user of what's happening.
+	_tprintf(_T("Loading ") SPEC_STR LINEBREAK, fname);
+
 	// Get the file contents.
 	contents = slurp_file(fname);
 	if (contents == NULL) {

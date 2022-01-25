@@ -44,11 +44,17 @@
 // Private variables.
 static env_t repl_env;
 static TCHAR repl_input[REPL_INPUT_MAX_LEN + 1];
+static bool env_initialized;
 
 // Private methods.
 void enable_unicode(void);
 void usage(const TCHAR *pname, int retval);
-void parse_arguments(int argc, TCHAR **argv);
+void parse_args(int argc, TCHAR **argv);
+bamboo_error_t init_env(void);
+bamboo_error_t destroy_env(void);
+void repl(void);
+void load_include(const TCHAR *fname, bool terminate);
+void run_source(const TCHAR *fname);
 
 /**
  * Program's main entry point.
@@ -59,24 +65,78 @@ void parse_arguments(int argc, TCHAR **argv);
  */
 int _tmain(int argc, TCHAR *argv[]) {
 	bamboo_error_t err;
-	int retval = 0;
+
+	// Setup some flags.
+	env_initialized = false;
 
 	// Enable Unicode support in the console and parse any given arguments.
 	enable_unicode();
-	parse_arguments(argc, argv);
+	parse_args(argc, argv);
+
+	// Initialize the Lisp environment.
+	if (!env_initialized) {
+		err = init_env();
+		IF_BAMBOO_ERROR(err)
+			goto quit;
+	}
+
+	// Start the REPL.
+	repl();
+
+quit:
+	destroy_env();
+	return err;
+}
+
+/**
+ * Initializes the Lisp environment.
+ * 
+ * @return BAMBOO_OK if everything went fine.
+ */
+bamboo_error_t init_env(void) {
+	bamboo_error_t err;
 
 	// Initialize the interpreter.
 	err = bamboo_init(&repl_env);
 	IF_BAMBOO_ERROR(err)
 		return err;
 
+	// Set our initialized flag.
+	env_initialized = true;
+
 	// Add our own REPL-related built-in functions.
 	err = repl_populate_builtins(&repl_env);
 	IF_BAMBOO_ERROR(err)
 		return err;
 
-	// Start the REPL.
+	return err;
+}
+
+/**
+ * Destroys our current Lisp environment and quit.
+ * 
+ * @return BAMBOO_OK if we were able to clean everything up.
+ */
+bamboo_error_t destroy_env(void) {
+	// Do nothing if nothing was initialized.
+	if (!env_initialized)
+		return BAMBOO_OK;
+
+	// Destroy our environment.
+	return bamboo_destroy(&repl_env);
+}
+
+/**
+ * Creates a classic Read-Eval-Print-Loop.
+ */
+void repl(void) {
+	bamboo_error_t err;
+	int retval = 0;
+
+	// Initialize the REPL.
 	repl_init();
+
+	// Start the REPL loop.
 	while (!repl_readline(repl_input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
@@ -114,6 +174,8 @@ int _tmain(int argc, TCHAR *argv[]) {
 				// Check if we just got a quit situation.
 				if (err == (bamboo_error_t)BAMBOO_REPL_QUIT) {
 					retval = (int)result.value.integer;
+					err = BAMBOO_OK;
+
 					goto quit;
 				}
 
@@ -131,13 +193,72 @@ int _tmain(int argc, TCHAR *argv[]) {
 	}
 
 quit:
-	// Free up resources.
-	err = bamboo_destroy(&repl_env);
-
 	// Return the correct code.
+	err = destroy_env();
 	IF_BAMBOO_ERROR(err)
-		return err;
-	return retval;
+		exit((int)err);
+
+	exit(retval);
+}
+
+/**
+ * Loads a source file into the current environment.
+ *
+ * @param fname     Path to the source file to be loaded.
+ * @param terminate Terminate the program after loading the source file?
+ */
+void load_include(const TCHAR *fname, bool terminate) {
+	bamboo_error_t err;
+	atom_t result;
+	int retval = 0;
+
+	// Initialize the Lisp environment.
+	if (!env_initialized) {
+		err = init_env();
+		IF_BAMBOO_ERROR(err)
+			goto quit;
+	}
+
+	// Load the file.
+	err = load_source(&repl_env, fname, &result);
+	IF_BAMBOO_ERROR(err) {
+		// Check if we just got a quit situation.
+		if (err == (bamboo_error_t)BAMBOO_REPL_QUIT) {
+			retval = (int)result.value.integer;
+			err = BAMBOO_OK;
+
+			goto quit;
+		}
+
+		// Explain the real issue then...
+		bamboo_print_error(err);
+		_ftprintf(stderr, LINEBREAK);
+		goto quit;
+	}
+
+	// Print the evaluated result.
+	bamboo_print_expr(result);
+	_tprintf(LINEBREAK);
+
+	// Continue the program execution if we want to.
+	if (!terminate)
+		return;
+
+quit:
+	// Return the correct code.
+	err = destroy_env();
+	IF_BAMBOO_ERROR(err)
+		exit((int)err);
+	exit(retval);
+}
+
+/**
+ * Runs a source file and quits the application after its finished.
+ *
+ * @param fname Path to the source file to be executed.
+ */
+void run_source(const TCHAR *fname) {
+	load_include(fname, true);
 }
 
 /**
@@ -147,22 +268,33 @@ quit:
  * @param  argv Command-line arguments passed to the program.
  * @return      0 if everything went fine.
  */
-void parse_arguments(int argc, TCHAR **argv) {
+void parse_args(int argc, TCHAR **argv) {
 	int opt;
 
-	while ((opt = getopt(argc, argv, _T("abX"))) != -1) {
+	while ((opt = getopt(argc, argv, _T("-:r:l:h"))) != -1) {
 		switch (opt) {
-		case _T('a'):
-			_tprintf(_T("Option a was provided\r\n"));
+		case _T('r'):
+		case 1:
+			// Run a script.
+			run_source(optarg);
 			break;
-		case _T('b'):
-			_tprintf(_T("Option b was provided\r\n"));
+		case _T('l'):
+			// Load a script into the current environment.
+			load_include(optarg, false);
 			break;
-		case _T('X'):
-			_tprintf(_T("Option X was provided\r\n"));
+		case _T('h'):
+			// Help
+			usage(argv[0], EXIT_SUCCESS);
+			break;
+		case ':':
+			_tprintf(_T("Missing argument for ") SPEC_CHR LINEBREAK, optopt);
+			usage(argv[0], EXIT_FAILURE);
 			break;
 		case _T('?'):
-			usage(argv[0], 1);
+			_tprintf(_T("Unknown option: ") SPEC_CHR LINEBREAK, optopt);
+			// Fallthrough...
+		default:
+			usage(argv[0], EXIT_FAILURE);
 			break;
 		}
 	}
@@ -175,6 +307,8 @@ void parse_arguments(int argc, TCHAR **argv) {
  * @param retval Return value to be used when exiting.
  */
 void usage(const TCHAR *pname, int retval) {
+	_tprintf(_T("Usage: ") SPEC_STR _T(" [[-rl] source]") LINEBREAK,
+		pname);
 	exit(retval);
 }
 
