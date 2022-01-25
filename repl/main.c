@@ -307,8 +307,20 @@ void parse_args(int argc, TCHAR **argv) {
  * @param retval Return value to be used when exiting.
  */
 void usage(const TCHAR *pname, int retval) {
-	_tprintf(_T("Usage: ") SPEC_STR _T(" [[-rl] source]") LINEBREAK,
+	_tprintf(_T("Usage: ") SPEC_STR _T(" [[-rl] source]") LINEBREAK LINEBREAK,
 		pname);
+
+	_tprintf(_T("Options:") LINEBREAK);
+	_tprintf(_T("    -r <source>  Runs the source file and quits.")
+		LINEBREAK);
+	_tprintf(_T("    -l <source>  Loads the source file before the REPL.")
+		LINEBREAK);
+	_tprintf(_T("    -h           Displays this message.")
+		LINEBREAK);
+
+	_tprintf(LINEBREAK _T("Author: Nathan Campos <nathan@innoveworkshop.com>")
+		LINEBREAK);
+
 	exit(retval);
 }
 
