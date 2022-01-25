@@ -53,18 +53,21 @@ extern "C" {
 		typedef wchar_t TCHAR;
 		#define _T(x)   L ## x
 		#define _tmain  main // wmain
+		#define __targv __wargv
 
 		// Standard I/O.
 		#define	_tprintf   wprintf
 		#define	_ftprintf  fwprintf
 		#define _stprintf  swprintf
 		#define _sntprintf snwprintf
+		#define _vftprintf vfwprintf
 		#define _puttchar  putwchar
 		#define _puttc     putwc
 		#define _gettchar  getwchar
 
 		// String operations.
 		#define _tcscmp   wcscmp
+		#define _tcsncmp  wcsncmp
 		#define _tcsspn   wcsspn
 		#define _tcschr   wcschr
 		#define _tcscat   wcscat
@@ -83,18 +86,21 @@ extern "C" {
 		typedef char   TCHAR;
 		#define _T(x)  x
 		#define _tmain main
+		#define __targv __argv
 
 		// Standard I/O.
 		#define	_tprintf   printf
 		#define	_ftprintf  fprintf
 		#define _stprintf  sprintf
 		#define _sntprintf snprintf
+		#define _vftprintf vfprintf
 		#define _puttchar  putchar
 		#define _puttc     putc
 		#define _gettchar  getchar
 
 		// String operations.
 		#define _tcscmp   strcmp
+		#define _tcsncmp  strncmp
 		#define _tcsspn   strspn
 		#define _tcschr   strchr
 		#define _tcscat   strcat
