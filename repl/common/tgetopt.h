@@ -74,7 +74,19 @@
 #include <stdarg.h>
 #include <stdio.h>
 #ifdef _WIN32
-	#include <crtdefs.h>
+	#if (_MSC_VER > 1200)
+		#include <crtdefs.h>
+	#else
+		// Make sure Unicode is enabled.
+		#ifndef __WATCOMC__
+			#ifndef _UNICODE
+				#define _UNICODE
+			#endif  // _UNICODE
+			#ifndef UNICODE
+				#define UNICODE
+			#endif  // UNICODE
+		#endif  // __WATCOMC__
+	#endif  // _MSC_VER
 	#include <windows.h>
 	#include <tchar.h>
 #else
@@ -134,11 +146,10 @@ extern "C" {
 	static int gcd(int, int);
 	static void permute_args(int, int, int, TCHAR *const *);
 
-	static TCHAR *place = EMSG; /* option letter processing */
+	static int nonopt_start; /* first non option argument (for permute) */
+	static int nonopt_end;   /* first option after non options (for permute) */
 
-	/* XXX: set optreset to 1 rather than these two */
-	static int nonopt_start = -1; /* first non option argument (for permute) */
-	static int nonopt_end = -1;   /* first option after non options (for permute) */
+	static TCHAR *place = EMSG; /* option letter processing */
 
 	/* Error messages */
 	static const TCHAR recargchar[] = _T("option requires an argument -- %c");
@@ -147,6 +158,10 @@ extern "C" {
 	static const TCHAR noarg[] = _T("option doesn't take an argument -- %.*s");
 	static const TCHAR illoptchar[] = _T("unknown option -- %c");
 	static const TCHAR illoptstring[] = _T("unknown option -- %s");
+
+	/* XXX: set optreset to 1 rather than these two */
+	nonopt_start = -1;
+	nonopt_end = -1;
 
 	static void
 		_vwarnx(const TCHAR *fmt, va_list ap) {

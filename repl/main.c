@@ -14,7 +14,7 @@
 		#define _O_WTEXT 0x10000
 	#endif  // _O_WTEXT
 
-	// Make sure unicode is enabled.
+	// Make sure Unicode is enabled.
 	#ifndef __WATCOMC__
 		#ifndef _UNICODE
 			#define _UNICODE

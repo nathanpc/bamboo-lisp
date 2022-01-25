@@ -17,6 +17,13 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+	// Defined INVALID_FILE_ATTRIBUTES for platforms that don't have it.
+	#ifndef INVALID_FILE_ATTRIBUTES
+		#define INVALID_FILE_ATTRIBUTES 0xFFFFFFFF
+	#endif  // INVALID_FILE_ATTRIBUTES
+#endif  // _WIN32
+
 // Checking.
 bool file_exists(const TCHAR *fpath);
 bool file_ext_match(const TCHAR *fpath, const TCHAR *ext);
