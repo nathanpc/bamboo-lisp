@@ -94,6 +94,9 @@ bamboo_error_t repl_populate_builtins(env_t *env) {
 	err = bamboo_env_set_builtin(*env, _T("QUIT"), builtin_quit);
 	IF_BAMBOO_ERROR(err)
 		return err;
+	err = bamboo_env_set_builtin(*env, _T("EXIT"), builtin_quit);
+	IF_BAMBOO_ERROR(err)
+		return err;
 
 	// Load source file.
 	err = bamboo_env_set_builtin(*env, _T("LOAD"), builtin_load);
