@@ -5,7 +5,7 @@
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
 
-// Make sure Windows (and Open Watcom under Windows) is happy.
+// Make sure Visual C++ and Open Watcom under Windows are happy.
 #ifdef _WIN32
 	#include <windows.h>
 
@@ -33,6 +33,7 @@
 	#include <fcntl.h>
 	#include <io.h>
 #endif // _WIN32
+#include "common/tgetopt.h"
 #include "../src/bamboo.h"
 #include "input.h"
 #include "functions.h"
@@ -42,6 +43,12 @@
 
 // Private variables.
 static env_t repl_env;
+static TCHAR repl_input[REPL_INPUT_MAX_LEN + 1];
+
+// Private methods.
+void enable_unicode(void);
+void usage(const TCHAR *pname, int retval);
+void parse_arguments(int argc, TCHAR **argv);
 
 /**
  * Program's main entry point.
@@ -50,20 +57,13 @@ static env_t repl_env;
  * @param  argv Command-line arguments passed to the program.
  * @return      0 if everything went fine.
  */
-int _tmain(int argc, char *argv[]) {
-	TCHAR *input;
+int _tmain(int argc, TCHAR *argv[]) {
 	bamboo_error_t err;
 	int retval = 0;
 
-#ifdef UNICODE
-	// Enable support for unicode in the console.
-#ifdef _WIN32
-	(void)_setmode(_fileno(stdout), _O_WTEXT);
-	(void)_setmode(_fileno(stdin), _O_WTEXT);
-#else
-	setlocale(LC_ALL, "en_US.UTF-8");
-#endif  // _WIN32
-#endif  // UNICODE
+	// Enable Unicode support in the console and parse any given arguments.
+	enable_unicode();
+	parse_arguments(argc, argv);
 
 	// Initialize the interpreter.
 	err = bamboo_init(&repl_env);
@@ -75,20 +75,12 @@ int _tmain(int argc, char *argv[]) {
 	IF_BAMBOO_ERROR(err)
 		return err;
 
-	// Allocate memory for the REPL input data.
-	input = (TCHAR *)malloc(sizeof(TCHAR) * (REPL_INPUT_MAX_LEN + 1));
-	if (input == NULL) {
-		_ftprintf(stderr, _T("Can't allocate the input string for the REPL")
-			LINEBREAK);
-		return 1;
-	}
-
 	// Start the REPL.
 	repl_init();
-	while (!repl_readline(input, REPL_INPUT_MAX_LEN)) {
+	while (!repl_readline(repl_input, REPL_INPUT_MAX_LEN)) {
 		atom_t parsed;
 		atom_t result;
-		const TCHAR *end = input;
+		const TCHAR *end = repl_input;
 
 		// Check if we've parsed all of the statements in the expression.
 		while (*end != _T('\0')) {
@@ -104,8 +96,8 @@ int _tmain(int argc, char *argv[]) {
 				uint8_t spaces;
 
 				// Show where the user was wrong.
-				_tprintf(_T("%s %s"), input, LINEBREAK);
-				for (spaces = 0; spaces < (end - input); spaces++)
+				_tprintf(_T("%s %s"), repl_input, LINEBREAK);
+				for (spaces = 0; spaces < (end - repl_input); spaces++)
 					_puttchar(_T(' '));
 				_tprintf(_T("^ "));
 
@@ -141,10 +133,61 @@ int _tmain(int argc, char *argv[]) {
 quit:
 	// Free up resources.
 	err = bamboo_destroy(&repl_env);
-	free(input);
 
 	// Return the correct code.
 	IF_BAMBOO_ERROR(err)
 		return err;
 	return retval;
+}
+
+/**
+ * Program's main entry point.
+ *
+ * @param  argc Number of command-line arguments passed to the program.
+ * @param  argv Command-line arguments passed to the program.
+ * @return      0 if everything went fine.
+ */
+void parse_arguments(int argc, TCHAR **argv) {
+	int opt;
+
+	while ((opt = getopt(argc, argv, _T("abX"))) != -1) {
+		switch (opt) {
+		case _T('a'):
+			_tprintf(_T("Option a was provided\r\n"));
+			break;
+		case _T('b'):
+			_tprintf(_T("Option b was provided\r\n"));
+			break;
+		case _T('X'):
+			_tprintf(_T("Option X was provided\r\n"));
+			break;
+		case _T('?'):
+			usage(argv[0], 1);
+			break;
+		}
+	}
+}
+
+/**
+ * Prints the usage message of the program.
+ * 
+ * @param pname  Program name.
+ * @param retval Return value to be used when exiting.
+ */
+void usage(const TCHAR *pname, int retval) {
+	exit(retval);
+}
+
+/**
+ * Enables Unicode support in the console if compiled with support.
+ */
+void enable_unicode(void) {
+#ifdef UNICODE
+#ifdef _WIN32
+	(void)_setmode(_fileno(stdout), _O_WTEXT);
+	(void)_setmode(_fileno(stdin), _O_WTEXT);
+#else
+	setlocale(LC_ALL, "en_US.UTF-8");
+#endif  // _WIN32
+#endif  // UNICODE
 }
