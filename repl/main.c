@@ -32,8 +32,11 @@
 #ifdef _WIN32
 	#include <fcntl.h>
 	#include <io.h>
+	#include "common/tgetopt.h"
+#else
+	#include <unistd.h>
+	#include <getopt.h>
 #endif // _WIN32
-#include "common/tgetopt.h"
 #include "../src/bamboo.h"
 #include "input.h"
 #include "functions.h"
@@ -332,8 +335,9 @@ void enable_unicode(void) {
 #ifdef _WIN32
 	(void)_setmode(_fileno(stdout), _O_WTEXT);
 	(void)_setmode(_fileno(stdin), _O_WTEXT);
-#else
-	setlocale(LC_ALL, "en_US.UTF-8");
 #endif  // _WIN32
+#else
+	// Force UTF-8 on platforms other than Windows.
+	setlocale(LC_ALL, "en_US.UTF-8");
 #endif  // UNICODE
 }

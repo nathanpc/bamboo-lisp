@@ -22,8 +22,13 @@ ifeq ($(PLATFORM), Darwin)
 endif
 
 # Flags
-CFLAGS  = -Wall -Wno-psabi -DUNICODE
+CFLAGS  = -Wall -Wno-psabi
 LDFLAGS = 
+
+# Enable Unicode on Windows platforms.
+ifeq ($(PLATFORM), Windows)
+	CFLAGS += -DUNICODE
+endif
 
 # Enable GNU Readline for Linux and OS X.
 ifeq ($(PLATFORM), Linux)
