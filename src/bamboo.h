@@ -142,11 +142,12 @@ extern "C" {
 
 // Parser return values.
 typedef enum {
-	BAMBOO_PAREN_QUOTE_END = -4,
-	BAMBOO_PAREN_END = -3,
-	BAMBOO_QUOTE_END = -2,
-	BAMBOO_EMPTY_LINE = -1,
-	BAMBOO_OK = 0,
+	BAMBOO_PAREN_QUOTE_END = -5,
+	BAMBOO_PAREN_END       = -4,
+	BAMBOO_QUOTE_END       = -3,
+	BAMBOO_COMMENT         = -2,
+	BAMBOO_EMPTY_LINE      = -1,
+	BAMBOO_OK              = 0,
 	BAMBOO_ERROR_SYNTAX,
 	BAMBOO_ERROR_EMPTY,
 	BAMBOO_ERROR_UNBOUND,

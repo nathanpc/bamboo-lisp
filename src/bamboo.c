@@ -118,6 +118,8 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
 	atom_t *atom);
 bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom);
+bamboo_error_t parse_comment(const token_t *token, const TCHAR **end,
+	atom_t *atom);
 frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail);
 bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env);
 bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env);
@@ -757,8 +759,8 @@ void list_reverse(atom_t *list) {
 bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	const TCHAR *tmp = str;
 	const TCHAR *wspace = _T(" \t\r\n");
-	const TCHAR *delim = _T("()\" \t\r\n");
-	const TCHAR *prefix = _T("()\'\"");
+	const TCHAR *delim = _T("()\"; \t\r\n");
+	const TCHAR *prefix = _T("()\'\";");
 
 	// Skip any leading whitespace.
 	tmp += _tcsspn(tmp, wspace);
@@ -815,10 +817,13 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 	// Try to parse the toke we've found.
 	switch (token.start[0]) {
 	case _T('\"'):
+		// String
 		return parse_string(&token, end, atom);
 	case _T('('):
+		// List beginning.
 		return parse_list(token.end, end, atom);
 	case _T(')'):
+		// List ending.
 		return BAMBOO_PAREN_END;
 	case _T('\''):
 		// Check if we are trying to quote a list.
@@ -840,7 +845,11 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 			return BAMBOO_PAREN_QUOTE_END;
 
 		return BAMBOO_QUOTE_END;
+	case _T(';'):
+		// Comment ahead.
+		return parse_comment(&token, end, atom);
 	default:
+		// Primitive it is.
 		return parse_primitive(&token, end, atom);
 	}
 
@@ -1176,6 +1185,9 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 				*end = token.end;
 				err = BAMBOO_OK;
 				break;
+			case BAMBOO_COMMENT:
+			case BAMBOO_EMPTY_LINE:
+				continue;
 			default:
 				// We haven't implemented this new special condition apparently.
 				return bamboo_error(err, _T("Unknown special condition"));
@@ -1212,6 +1224,34 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 	}
 
 	return BAMBOO_OK;
+}
+
+/**
+ * Parses a comment token.
+ *
+ * @param  token Pointer to token structure that holds the beginning and the end
+ *               of a token string.
+ * @param  end   Pointer to the end of the last parsed part of the expression.
+ * @param  atom  Pointer to an atom structure that will hold the parsed atom.
+ * @return       BAMBOO_OK if we were able to parse the token correctly.
+ */
+bamboo_error_t parse_comment(const token_t *token, const TCHAR **end,
+							 atom_t *atom) {
+	const TCHAR *tmp;
+
+	// We already know this thing has no future, so...
+	*atom = nil;
+
+	// Skip to the nearest newline character or string terminator.
+	tmp = token->end;
+	while ((*tmp != _T('\0')) && (*tmp != _T('\n'))) {
+		tmp++;
+	}
+
+	// We've reached the end of the comment.
+	*end = tmp;
+
+	return BAMBOO_COMMENT;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
