@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+#include <wchar.h>
 #include "../src/bamboo.h"
 
 // Conversion

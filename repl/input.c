@@ -58,6 +58,9 @@ int repl_readline(TCHAR *buf, size_t len) {
 #ifdef UNICODE
 	// Convert our string to a wide string for the buffer.
 	mbstowcs(buf, line, len);
+#else
+	// Copy the line to our buffer.
+	strcpy(buf, line);
 #endif
 
 	// Free our buffer.

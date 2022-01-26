@@ -7,6 +7,7 @@
 
 #include "strutils.h"
 #include <stdlib.h>
+#include <string.h>
 
 /**
  * Truncates a wide-character string into a regular string.

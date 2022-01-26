@@ -14,7 +14,7 @@ TARGET = $(BUILDDIR)/$(PROJECT)
 
 # Sources and Flags
 PREREQS = $(BUILDDIR)/bamboo.o
-SOURCES = main.c input.c functions.c
+SOURCES = main.c input.c functions.c strutils.c fileutils.c
 OBJECTS := $(patsubst %.c, $(BUILDDIR)/%.o, $(SOURCES))
 
 .PHONY: all compile run debug memcheck clean
@@ -23,7 +23,7 @@ all: $(TARGET)
 compile: $(TARGET)
 
 $(TARGET): $(OBJECTS) $(PREREQS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BUILDDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
