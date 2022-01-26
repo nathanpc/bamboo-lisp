@@ -150,6 +150,7 @@ void repl(void) {
 	int retval = 0;
 
 	// Initialize the REPL.
+	err = BAMBOO_OK;
 	repl_init();
 
 	// Start the REPL loop.
@@ -157,6 +158,10 @@ void repl(void) {
 		atom_t parsed;
 		atom_t result;
 		const TCHAR *end = repl_input;
+
+		// Check if all we've got was an empty line.
+		if (*repl_input == _T('\0'))
+			continue;
 
 		// Check if we've parsed all of the statements in the expression.
 		while (*end != _T('\0')) {

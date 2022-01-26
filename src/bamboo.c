@@ -21,7 +21,7 @@
 
 // Convinience macros.
 #define IF_ERROR(err)        IF_BAMBOO_ERROR(err)
-#define IF_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
+#define IF_SPECIAL_COND(err) IF_BAMBOO_SPECIAL_COND(err)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
 
 // Make Visual C++ 6.0 not complain about passing NULL to _sntprintf.
@@ -765,10 +765,10 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 
 	// Check if this was an empty line.
 	if (tmp[0] == _T('\0')) {
-		token->start = NULL;
-		token->end = NULL;
+		token->start = tmp;
+		token->end = tmp;
 
-		return bamboo_error(BAMBOO_ERROR_EMPTY, _T("Empty line"));
+		return BAMBOO_EMPTY_LINE;
 	}
 
 	// Set the starting point of our token.
@@ -798,10 +798,21 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 	token_t token;
 	bamboo_error_t err;
 
+	// Pass the input through the lexer to get a token.
 	err = lex(input, &token);
 	IF_ERROR(err)
 		return err;
 
+	// Handle some special conditions.
+	IF_SPECIAL_COND(err) {
+		switch (err) {
+		case BAMBOO_EMPTY_LINE:
+			*atom = nil;
+			return err;
+		}
+	}
+
+	// Try to parse the toke we've found.
 	switch (token.start[0]) {
 	case _T('\"'):
 		return parse_string(&token, end, atom);
@@ -833,6 +844,7 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 		return parse_primitive(&token, end, atom);
 	}
 
+	// Well, something truly weird must have happened.
 	return BAMBOO_ERROR_UNKNOWN;
 }
 

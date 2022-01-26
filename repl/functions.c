@@ -61,6 +61,16 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 			goto stop;
 		}
 
+		// Deal with some special conditions from the parsing stage.
+		IF_BAMBOO_SPECIAL_COND(err) {
+			switch (err) {
+			case BAMBOO_EMPTY_LINE:
+				// Ignore things that are meant to be ignored.
+				end++;
+				continue;
+			}
+		}
+
 		// Evaluate the parsed expression.
 		err = bamboo_eval_expr(parsed, *env, result);
 		IF_BAMBOO_ERROR(err) {

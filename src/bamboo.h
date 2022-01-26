@@ -136,14 +136,16 @@ extern "C" {
 	#define GC_ITER_COUNT_SWEEP 10000
 #endif  // GC_ITER_COUNT_SWEEP
 
-// Error checking macro.
-#define IF_BAMBOO_ERROR(err) if ((err) > BAMBOO_OK)
+// Error checking macros.
+#define IF_BAMBOO_ERROR(err)        if ((err) > BAMBOO_OK)
+#define IF_BAMBOO_SPECIAL_COND(err) if ((err) < BAMBOO_OK)
 
 // Parser return values.
 typedef enum {
-	BAMBOO_PAREN_QUOTE_END = -3,
-	BAMBOO_PAREN_END = -2,
-	BAMBOO_QUOTE_END = -1,
+	BAMBOO_PAREN_QUOTE_END = -4,
+	BAMBOO_PAREN_END = -3,
+	BAMBOO_QUOTE_END = -2,
+	BAMBOO_EMPTY_LINE = -1,
 	BAMBOO_OK = 0,
 	BAMBOO_ERROR_SYNTAX,
 	BAMBOO_ERROR_EMPTY,
