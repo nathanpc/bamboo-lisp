@@ -58,6 +58,7 @@ bamboo_error_t destroy_env(void);
 void repl(void);
 void load_include(const TCHAR *fname, bool terminate);
 void run_source(const TCHAR *fname);
+void cleanup(void);
 
 /**
  * Program's main entry point.
@@ -71,6 +72,9 @@ int _tmain(int argc, TCHAR *argv[]) {
 
 	// Setup some flags.
 	env_initialized = false;
+
+	// Make sure we clean things up.
+	atexit(cleanup);
 
 	// Enable Unicode support in the console and parse any given arguments.
 	enable_unicode();
@@ -87,6 +91,7 @@ int _tmain(int argc, TCHAR *argv[]) {
 	repl();
 
 quit:
+	repl_destroy();
 	destroy_env();
 	return err;
 }
@@ -127,6 +132,14 @@ bamboo_error_t destroy_env(void) {
 
 	// Destroy our environment.
 	return bamboo_destroy(&repl_env);
+}
+
+/**
+ * Performs some basic cleanup before the program exits.
+ */
+void cleanup(void) {
+	repl_destroy();
+	destroy_env();
 }
 
 /**
@@ -197,10 +210,8 @@ void repl(void) {
 
 quit:
 	// Return the correct code.
-	err = destroy_env();
 	IF_BAMBOO_ERROR(err)
 		exit((int)err);
-
 	exit(retval);
 }
 
@@ -249,7 +260,6 @@ void load_include(const TCHAR *fname, bool terminate) {
 
 quit:
 	// Return the correct code.
-	err = destroy_env();
 	IF_BAMBOO_ERROR(err)
 		exit((int)err);
 	exit(retval);

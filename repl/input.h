@@ -15,7 +15,11 @@ extern "C" {
 #include "../src/bamboo.h"
 #include <stddef.h>
 
+// Initialization and destruction.
 void repl_init(void);
+void repl_destroy(void);
+
+// Input
 int repl_readline(TCHAR *buf, size_t len);
 
 #ifdef __cplusplus

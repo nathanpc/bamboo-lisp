@@ -30,6 +30,16 @@ void repl_init(void) {
 }
 
 /**
+ * Cleans up any mess created by the REPL.
+ */
+void repl_destroy(void) {
+#ifdef USE_GNU_READLINE
+	// Empty readline's history.
+	clear_history();
+#endif  // USE_GNU_READLINE
+}
+
+/**
  * Reads the user input like a command prompt.
  *
  * @param  buf Pointer to the buffer that will hold the user input.
