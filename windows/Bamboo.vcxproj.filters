@@ -16,6 +16,9 @@
     <Filter Include="Utilities">
       <UniqueIdentifier>{27421a31-d446-46e5-84b9-20f6fcd83881}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{5078965c-e0ec-402d-8051-30f7f94e53b6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\bamboo.c">
@@ -56,5 +59,15 @@
     <ClInclude Include="..\repl\common\tgetopt.h">
       <Filter>Utilities</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\LICENSE.txt">
+      <Filter>Documentation</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Filter>Documentation</Filter>
+    </None>
   </ItemGroup>
 </Project>
