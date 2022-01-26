@@ -70,6 +70,7 @@ extern "C" {
 		#define _tcsncmp  wcsncmp
 		#define _tcsspn   wcsspn
 		#define _tcschr   wcschr
+		#define _tcsstr   wcsstr
 		#define _tcscat   wcscat
 		#define _tcsncat  wcsncat
 		#define _tcscspn  wcscspn
@@ -103,6 +104,7 @@ extern "C" {
 		#define _tcsncmp  strncmp
 		#define _tcsspn   strspn
 		#define _tcschr   strchr
+		#define _tcsstr   strstr
 		#define _tcscat   strcat
 		#define _tcsncat  strncat
 		#define _tcscspn  strcspn
