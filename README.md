@@ -28,6 +28,17 @@ compilers this project is proven to build in:
   - Clang 5.1 (Mac OS X)
 
 
+## Building the REPL
+
+In order to build the complete REPL and interpreter environment under an UNIX
+platform all you need to do is just run `make` in the root of the project and
+you'll get a `bamboo` binary built in the `build/` directory.
+
+If you're on Windows a Visual Studio solution has been thoughtfully included in
+the `windows/` directory. Just open the `Bamboo.sln` file and compile the
+project.
+
+
 ## Example Usage
 
 There are some examples included in the `examples` folder, but here's a very
