@@ -56,8 +56,6 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 		IF_BAMBOO_ERROR(err) {
 			// Show the error message.
 			bamboo_print_error(err);
-			_ftprintf(stderr, LINEBREAK);
-
 			goto stop;
 		}
 
@@ -80,7 +78,6 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 
 			// Explain the real issue then...
 			bamboo_print_error(err);
-			_ftprintf(stderr, LINEBREAK);
 			goto stop;
 		}
 	}

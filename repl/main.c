@@ -184,9 +184,7 @@ void repl(void) {
 
 				// Show the error message.
 				bamboo_print_error(err);
-				_ftprintf(stderr, LINEBREAK);
-
-				continue;
+				goto next;
 			}
 
 			// Evaluate the parsed expression.
@@ -202,15 +200,15 @@ void repl(void) {
 
 				// Explain the real issue then...
 				bamboo_print_error(err);
-				_ftprintf(stderr, LINEBREAK);
-
-				continue;
+				goto next;
 			}
 		}
 
 		// Print the evaluated result.
 		bamboo_print_expr(result);
 		_tprintf(LINEBREAK);
+next:
+		;
 	}
 
 quit:
