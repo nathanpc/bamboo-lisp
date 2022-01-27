@@ -29,7 +29,7 @@ $(BUILDDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 run: $(TARGET)
-	$(TARGET)
+	$(TARGET) -l ../corelib/core.bam
 
 debug: CFLAGS += -g3 -DDEBUG
 debug: clean $(TARGET)
