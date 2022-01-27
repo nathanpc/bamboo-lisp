@@ -74,12 +74,12 @@
   `((lambda () ,@body)))
 
 (define-macro (cond . clauses)
-  (if clauses
-      (let ((test (caar clauses))
-           (body (cdar clauses)))
-           `(if ,test
-                (begin ,@body)
-                (cond ,@(cdr clauses))))
+  (if (not (nil? clauses))
+	  (let ((test (caar clauses))
+	   		(body (cdar clauses)))
+        `(if ,test
+             (begin ,@body)
+             (cond ,@(cdr clauses))))
       nil))
 
 (define-macro (let defs . body)
@@ -91,6 +91,17 @@
 
 (define-macro (when test . body)
   `(if ,test (begin ,@body) nil))
+
+(define-macro (case var . clauses)
+  (if (not (nil? clauses))
+      (let ((test (caar clauses))
+			(body (cdar clauses)))
+		(if (eq? test 'otherwise)
+			`(begin ,@body)
+			`(if (eq? ,var ,test)
+				 (begin ,@body)
+				 (case ,var ,@(cdr clauses)))))
+      nil))
 
 ;;
 ;; List manipulation.
