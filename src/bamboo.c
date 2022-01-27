@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #ifndef _WIN32_WCE
@@ -16,8 +17,8 @@
 #endif  // _WIN32_WCE
 #include <limits.h>
 #include <float.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
-#include <stdarg.h>
 
 // Convinience macros.
 #define IF_ERROR(err)        IF_BAMBOO_ERROR(err)
@@ -136,6 +137,10 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result);
 bamboo_error_t builtin_multiply(atom_t args, atom_t *result);
 bamboo_error_t builtin_divide(atom_t args, atom_t *result);
 bamboo_error_t builtin_expt(atom_t args, atom_t *result);
+bamboo_error_t builtin_modulo(atom_t args, atom_t *result);
+bamboo_error_t builtin_floor(atom_t args, atom_t *result);
+bamboo_error_t builtin_round(atom_t args, atom_t *result);
+bamboo_error_t builtin_ceil(atom_t args, atom_t *result);
 bamboo_error_t builtin_not(atom_t args, atom_t *result);
 bamboo_error_t builtin_and(atom_t args, atom_t *result);
 bamboo_error_t builtin_or(atom_t args, atom_t *result);
@@ -236,7 +241,19 @@ bamboo_error_t populate_builtins(env_t *env) {
 	err = bamboo_env_set_builtin(*env, _T("/"), builtin_divide);
 	IF_ERROR(err)
 		return err;
+	err = bamboo_env_set_builtin(*env, _T("MOD"), builtin_modulo);
+	IF_ERROR(err)
+		return err;
 	err = bamboo_env_set_builtin(*env, _T("EXPT"), builtin_expt);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("FLOOR"), builtin_floor);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("ROUND"), builtin_round);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("CEIL"), builtin_ceil);
 	IF_ERROR(err)
 		return err;
 
@@ -312,6 +329,18 @@ bamboo_error_t populate_builtins(env_t *env) {
 	err = bamboo_env_set_builtin(*env, _T("DISPLAY-ENV"), builtin_display_env);
 	IF_ERROR(err)
 		return err;
+
+	// Mathematical constants.
+	err = bamboo_env_set(*env, bamboo_symbol(_T("E")), bamboo_float(M_E));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("LOG2E")), bamboo_float(M_LOG2E));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("LOG10E")), bamboo_float(M_LOG10E));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("LN2")), bamboo_float(M_LN2));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("LN10")), bamboo_float(M_LN10));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("PI")), bamboo_float(M_PI));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("PI/2")), bamboo_float(M_PI_2));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("PI/4")), bamboo_float(M_PI_4));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("SQRT2")), bamboo_float(M_SQRT2));
+	err = bamboo_env_set(*env, bamboo_symbol(_T("SQRT1/2")), bamboo_float(M_SQRT1_2));
 
 	return BAMBOO_OK;
 }
@@ -2690,12 +2719,13 @@ next:
 	return BAMBOO_OK;
 }
 
-// (expt x y) -> expt
+// (expt x y) -> num
 bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
 	atom_t nx;
 	atom_t ny;
 
 	// Check if we have the right number of arguments.
+	*result = nil;
 	if (list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 2 arguments"));
@@ -2732,6 +2762,144 @@ bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
 	result->value.dfloat = powl(nx.value.dfloat, ny.value.dfloat);
 
 	return BAMBOO_OK;
+}
+
+// (mod x y) -> num
+bamboo_error_t builtin_modulo(atom_t args, atom_t *result) {
+	*result = nil;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("This function expects 2 arguments"));
+	}
+
+	// Perform the calculation.
+	if (car(args).type == ATOM_TYPE_INTEGER) {
+		// X is an integer.
+		result->type = ATOM_TYPE_FLOAT;
+
+		// Actually calculate the modulo.
+		if (car(cdr(args)).type == ATOM_TYPE_INTEGER) {
+			// Both are integer.
+			result->value.dfloat = fmodl((long double)car(args).value.integer,
+				(long double)car(cdr(args)).value.integer);
+		} else if (car(cdr(args)).type == ATOM_TYPE_FLOAT) {
+			// Y is float, so we need to make sure the function returns a float.
+			result->value.dfloat = fmodl((long double)result->value.integer,
+				car(cdr(args)).value.dfloat);
+		}
+
+		return BAMBOO_OK;
+	} else if (car(args).type == ATOM_TYPE_FLOAT) {
+		// X is an float.
+		result->type = ATOM_TYPE_FLOAT;
+
+		// Actually calculate the modulo.
+		if (car(cdr(args)).type == ATOM_TYPE_FLOAT) {
+			// Both are floats.
+			result->value.dfloat = fmodl(car(args).value.dfloat,
+				car(cdr(args)).value.dfloat);
+		} else if (car(cdr(args)).type == ATOM_TYPE_INTEGER) {
+			// Y is an integer.
+			result->value.dfloat = fmodl(car(args).value.dfloat,
+				(long double)car(cdr(args)).value.integer);
+		}
+
+		return BAMBOO_OK;
+	}
+
+	// Doesn't look like a numeric to me...
+	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+		_T("Invalid type of argument. This function only accepts ")
+		_T("numerics"));
+}
+
+// (floor x) -> int
+bamboo_error_t builtin_floor(atom_t args, atom_t *result) {
+	*result = nil;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("This function expects a single argument"));
+	}
+
+	// Round the number.
+	result->type = ATOM_TYPE_INTEGER;
+	if (car(args).type == ATOM_TYPE_INTEGER) {
+		// Number is an integer.
+		result->value.integer = car(args).value.integer;
+		return BAMBOO_OK;
+	} else if (car(args).type == ATOM_TYPE_FLOAT) {
+		// Number is an float.
+		result->value.integer = (int64_t)floorl(car(args).value.dfloat);
+		return BAMBOO_OK;
+	}
+
+	// Doesn't look like a numeric to me...
+	*result = nil;
+	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+		_T("Invalid type of argument. This function only accepts ")
+		_T("numerics"));
+}
+
+// (round x) -> int
+bamboo_error_t builtin_round(atom_t args, atom_t *result) {
+	*result = nil;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("This function expects a single argument"));
+	}
+
+	// Round the number.
+	result->type = ATOM_TYPE_INTEGER;
+	if (car(args).type == ATOM_TYPE_INTEGER) {
+		// Number is an integer.
+		result->value.integer = car(args).value.integer;
+		return BAMBOO_OK;
+	} else if (car(args).type == ATOM_TYPE_FLOAT) {
+		// Number is an float.
+		result->value.integer = (int64_t)roundl(car(args).value.dfloat);
+		return BAMBOO_OK;
+	}
+
+	// Doesn't look like a numeric to me...
+	*result = nil;
+	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+		_T("Invalid type of argument. This function only accepts ")
+		_T("numerics"));
+}
+
+// (ceil x) -> int
+bamboo_error_t builtin_ceil(atom_t args, atom_t *result) {
+	*result = nil;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 1) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("This function expects a single argument"));
+	}
+
+	// Round the number.
+	result->type = ATOM_TYPE_INTEGER;
+	if (car(args).type == ATOM_TYPE_INTEGER) {
+		// Number is an integer.
+		result->value.integer = car(args).value.integer;
+		return BAMBOO_OK;
+	} else if (car(args).type == ATOM_TYPE_FLOAT) {
+		// Number is an float.
+		result->value.integer = (int64_t)ceill(car(args).value.dfloat);
+		return BAMBOO_OK;
+	}
+
+	// Doesn't look like a numeric to me...
+	*result = nil;
+	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+		_T("Invalid type of argument. This function only accepts ")
+		_T("numerics"));
 }
 
 // (not bool) -> bool

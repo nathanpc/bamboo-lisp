@@ -142,4 +142,66 @@
       (and (pair? x)
            (list? (cdr x)))))
 
+;;
+;; Numbers and math.
+;;
+
+(define (<= x y)
+  (or (= x y) (< x y)))
+
+(define (>= x y)
+  (<= y x))
+
+(define (abs x)
+  (if (< x 0)
+	  (* x -1)
+	  x))
+
+(define (even? x)
+  (= (mod x 2)))
+
+(define (odd? x)
+  (not (even? x)))
+
+(define (negative? x)
+  (< x 0))
+
+(define (positive? x)
+  (> x 0))
+
+(define (zero? x)
+  (= x 0))
+
+(define (max x . xs)
+  (foldl (lambda (a b) (if (> a b) a b))
+		 x xs))
+
+(define (min x . xs)
+  (foldl (lambda (a b) (if (< a b) a b))
+		 x xs))
+
+(define (quotient x y)
+  (floor (/ x y)))
+
+(define (remainder x y)
+  (- x (* y (quotient x y))))
+
+(define (gcd . xs)
+  (define (gcd-inner a b)
+    (if (zero? b)
+		a
+		(gcd-inner b (remainder a b))))
+  (abs (foldl gcd-inner 0 xs)))
+
+(define (lcm . xs)
+  (if xs
+      (/ (abs (apply * xs)) (apply gcd xs))
+      1))
+
+(define (sqrt x)
+  (expt x 0.5))
+
+(define (exp10 x)
+  (expt 10 x))
+
 #t
