@@ -135,6 +135,7 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result);
 bamboo_error_t builtin_subtract(atom_t args, atom_t *result);
 bamboo_error_t builtin_multiply(atom_t args, atom_t *result);
 bamboo_error_t builtin_divide(atom_t args, atom_t *result);
+bamboo_error_t builtin_expt(atom_t args, atom_t *result);
 bamboo_error_t builtin_not(atom_t args, atom_t *result);
 bamboo_error_t builtin_and(atom_t args, atom_t *result);
 bamboo_error_t builtin_or(atom_t args, atom_t *result);
@@ -233,6 +234,9 @@ bamboo_error_t populate_builtins(env_t *env) {
 	IF_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("/"), builtin_divide);
+	IF_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("EXPT"), builtin_expt);
 	IF_ERROR(err)
 		return err;
 
@@ -2683,6 +2687,50 @@ next:
 
 	// Return the result atom.
 	*result = num;
+	return BAMBOO_OK;
+}
+
+// (expt x y) -> expt
+bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
+	atom_t nx;
+	atom_t ny;
+
+	// Check if we have the right number of arguments.
+	if (list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("This function expects 2 arguments"));
+	}
+
+	// Get the X argument.
+	nx = car(args);
+	if (nx.type == ATOM_TYPE_INTEGER) {
+		// Looks like we need to convert this to a float atom first.
+		nx.type = ATOM_TYPE_FLOAT;
+		nx.value.dfloat = (long double)nx.value.integer;
+	} else if (nx.type != ATOM_TYPE_FLOAT) {
+		// Doesn't look like a numeric to me...
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Invalid type of argument. This function only accepts ")
+			_T("numerics"));
+	}
+
+	// Get the Y argument.
+	ny = car(cdr(args));
+	if (ny.type == ATOM_TYPE_INTEGER) {
+		// Looks like we need to convert this to a float atom first.
+		ny.type = ATOM_TYPE_FLOAT;
+		ny.value.dfloat = (long double)ny.value.integer;
+	} else if (ny.type != ATOM_TYPE_FLOAT) {
+		// Doesn't look like a numeric to me...
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Invalid type of argument. This function only accepts ")
+			_T("numerics"));
+	}
+
+	// Set the result atom.
+	result->type = ATOM_TYPE_FLOAT;
+	result->value.dfloat = powl(nx.value.dfloat, ny.value.dfloat);
+
 	return BAMBOO_OK;
 }
 
