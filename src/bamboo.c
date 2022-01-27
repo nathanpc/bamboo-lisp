@@ -826,25 +826,9 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 		// List ending.
 		return BAMBOO_PAREN_END;
 	case _T('\''):
-		// Check if we are trying to quote a list.
-		if (token.end[0] == _T('(')) {
-			// Sadly I'm having issues implementing this, so just error out.
-			return bamboo_error(BAMBOO_ERROR_SYNTAX,
-				_T("Can't use the quote shorthand for quoting lists. Please use ")
-				_T("the (quote) syntax for quoring lists"));
-		}
-
 		// Parse quoted body.
 		*atom = cons(bamboo_symbol(_T("QUOTE")), cons(nil, nil));
-		err = bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
-		IF_ERROR(err)
-			return err;
-
-		// Check if we've just returned from parsing a quoted list.
-		if (err == BAMBOO_PAREN_END)
-			return BAMBOO_PAREN_QUOTE_END;
-
-		return BAMBOO_QUOTE_END;
+		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
 	case _T(';'):
 		// Comment ahead.
 		return parse_comment(&token, end, atom);
@@ -1155,36 +1139,7 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 			case BAMBOO_PAREN_END:
 				// We've reached the end of a list.
 				*end = token.end;
-				/*
-				// Check if we have something after this list ended.
-				err = lex(*end, &test_token);
-				IF_BAMBOO_ERROR(err) {
-					// Check if we just finished parsing the string.
-					if (err == BAMBOO_ERROR_EMPTY)
-						return BAMBOO_OK;
-
-					// Looks like we actually errored out...
-					return err;
-				}
-
-				// Advance to the next token and continue parsing.
-				token.end = test_token.start;
-				goto continue_parsing;
-				*/
 				return BAMBOO_OK;
-			case BAMBOO_QUOTE_END:
-				// We've just ended dealing with a quote shorthand. Let's ignore
-				// the next token since it has already been dealt with.
-				err = lex(token.end, &token);
-				IF_ERROR(err)
-					return err;
-
-				// Let's just continue to the next line. It's fine.
-			case BAMBOO_PAREN_QUOTE_END:
-				// Move the end of the token in the last stack.
-				*end = token.end;
-				err = BAMBOO_OK;
-				break;
 			case BAMBOO_COMMENT:
 			case BAMBOO_EMPTY_LINE:
 				continue;
