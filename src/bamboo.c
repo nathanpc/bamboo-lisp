@@ -2371,16 +2371,11 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 			_T("This function expects a single argument"));
 	}
 
-	// Do what's appropriate for each scenario.
-	if (nilp(car(args))) {
-		// Is it just nil?
-		*result = nil;
-	} else if (car(args).type != ATOM_TYPE_PAIR) {
-		// Is it actually a pair?
-		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE, _T("Argument must be a pair"));
-	} else {
-		// Just get the first element of the pair.
+	// Get the first element of a pair otherwise just return nil.
+	if (car(args).type == ATOM_TYPE_PAIR) {
 		*result = car(car(args));
+	} else {
+		*result = nil;
 	}
 
 	return BAMBOO_OK;
@@ -2394,16 +2389,11 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 			_T("This function expects a single argument"));
 	}
 
-	// Do what's appropriate for each scenario.
-	if (nilp(car(args))) {
-		// Is it just nil?
-		*result = nil;
-	} else if (car(args).type != ATOM_TYPE_PAIR) {
-		// Is it actually a pair?
-		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE, _T("Argument must be a pair"));
-	} else {
-		// Just get the first element of the pair.
+	// Get the second element of a pair otherwise just return nil.
+	if (car(args).type == ATOM_TYPE_PAIR) {
 		*result = cdr(car(args));
+	} else {
+		*result = nil;
 	}
 
 	return BAMBOO_OK;
