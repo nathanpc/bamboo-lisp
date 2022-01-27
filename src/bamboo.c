@@ -760,7 +760,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	const TCHAR *tmp = str;
 	const TCHAR *wspace = _T(" \t\r\n");
 	const TCHAR *delim = _T("()\"; \t\r\n");
-	const TCHAR *prefix = _T("()\'\";");
+	const TCHAR *prefix = _T("()\'`\";");
 
 	// Skip any leading whitespace.
 	tmp += _tcsspn(tmp, wspace);
@@ -776,9 +776,14 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	// Set the starting point of our token.
 	token->start = tmp;
 
-	// Check if the token is just a parenthesis.
+	// Check if the token is just a parenthesis or unquotation.
 	if (_tcschr(prefix, tmp[0]) != NULL) {
 		token->end = tmp + 1;
+		return BAMBOO_OK;
+	} else if (tmp[0] == _T(',')) {
+		// Detect the end of an unquote or unquote splicing.
+		token->end = tmp + (tmp[1] == _T('@') ? 2 : 1);
+
 		return BAMBOO_OK;
 	}
 
@@ -828,6 +833,15 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 	case _T('\''):
 		// Parse quoted body.
 		*atom = cons(bamboo_symbol(_T("QUOTE")), cons(nil, nil));
+		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
+	case _T('`'):
+		// Quasiquote
+		*atom = cons(bamboo_symbol(_T("QUASIQUOTE")), cons(nil, nil));
+		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
+	case _T(','):
+		// Unquote
+		*atom = cons(bamboo_symbol(token.start[1] == _T('@') ?
+			_T("UNQUOTE-SPLICING") : _T("UNQUOTE")), cons(nil, nil));
 		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
 	case _T(';'):
 		// Comment ahead.
