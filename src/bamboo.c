@@ -1355,7 +1355,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Make the closure.
 					err = bamboo_closure(env, car(args), cdr(args), result);
-				} else if (_tcscmp(*op.value.symbol, _T("DEFMACRO")) == 0) {
+				} else if (_tcscmp(*op.value.symbol, _T("DEFINE-MACRO")) == 0) {
 					atom_t name;
 					atom_t macro;
 

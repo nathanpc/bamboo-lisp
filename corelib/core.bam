@@ -42,7 +42,7 @@
 							 (unary-map cdr arg-lists))))
 	  nil))
 
-(defmacro (quasiquote x)
+(define-macro (quasiquote x)
   (if (pair? x)
       (if (eq? (car x) 'unquote)
           (cadr x)
@@ -56,13 +56,24 @@
       (list 'quote x)))
 
 ;;
+;; Common Lisp aliases.
+
+(define-macro (defmacro name args . body)
+  `(define-macro (,name ,@args)
+	 ,@body))
+
+(define-macro (defun name args . body)
+  `(define ,name (lambda (,@args)
+				   ,@body)))
+
+;;
 ;; Program control flow.
 ;;
 
-(defmacro (begin . body)
+(define-macro (begin . body)
   `((lambda () ,@body)))
 
-(defmacro (cond . clauses)
+(define-macro (cond . clauses)
   (if clauses
       (let ((test (caar clauses))
            (body (cdar clauses)))
@@ -71,22 +82,15 @@
                 (cond ,@(cdr clauses))))
       nil))
 
-(defmacro (let defs . body)
+(define-macro (let defs . body)
   `((lambda ,(map car defs) ,@body)
     ,@(map cadr defs)))
 
-(defmacro (unless test . body)
+(define-macro (unless test . body)
   `(when (not ,test) ,@body))
 
-(defmacro (when test . body)
+(define-macro (when test . body)
   `(if ,test (begin ,@body) nil))
-
-;;
-;; Common Lisp aliases.
-
-(defmacro (defun name args . body)
-  `(define ,name (lambda (,@args)
-				   ,@body)))
 
 ;;
 ;; List manipulation.
