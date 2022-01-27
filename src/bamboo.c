@@ -2462,7 +2462,7 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 			// Float argument. Check if we should change our atom type first.
 			if (num.type == ATOM_TYPE_INTEGER) {
 				num.type = ATOM_TYPE_FLOAT;
-				num.value.dfloat = (double)num.value.integer;
+				num.value.dfloat = (long double)num.value.integer;
 			}
 
 			// Sum it up.
@@ -2533,7 +2533,7 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 			// Check if we should change our atom type first.
 			if (num.type == ATOM_TYPE_INTEGER) {
 				num.type = ATOM_TYPE_FLOAT;
-				num.value.dfloat = (double)num.value.integer;
+				num.value.dfloat = (long double)num.value.integer;
 			}
 
 			// Subtract it up.
@@ -2605,7 +2605,7 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 			// Check if we should change our atom type first.
 			if (num.type == ATOM_TYPE_INTEGER) {
 				num.type = ATOM_TYPE_FLOAT;
-				num.value.dfloat = (double)num.value.integer;
+				num.value.dfloat = (long double)num.value.integer;
 			}
 
 			// Multiply it up.
@@ -2634,7 +2634,7 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 
 	// Initialize the result atom.
 	num.type = ATOM_TYPE_FLOAT;
-	num.value.dfloat = (double)0;
+	num.value.dfloat = (long double)0;
 
 	// Check if we have the right number of arguments.
 	if (list_count(args) < 2) {
@@ -2648,13 +2648,13 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 			// Integer argument.
 			if (first) {
 				// First iteration, so let's assign the first value first.
-				num.value.dfloat = (double)car(args).value.integer;
+				num.value.dfloat = (long double)car(args).value.integer;
 				first = false;
 
 				goto next;
 			}
 
-			num.value.dfloat /= (double)car(args).value.integer;
+			num.value.dfloat /= (long double)car(args).value.integer;
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			// Float argument.
 			if (first) {
@@ -2668,7 +2668,7 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 			// Check if we should change our atom type first.
 			if (num.type == ATOM_TYPE_INTEGER) {
 				num.type = ATOM_TYPE_FLOAT;
-				num.value.dfloat = (double)num.value.integer;
+				num.value.dfloat = (long double)num.value.integer;
 			}
 
 			// Divide it up.
@@ -2830,7 +2830,7 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 					goto next;
 			} else {
 				// float == int.
-				if (prev_num.value.dfloat == (double)car(args).value.integer)
+				if (prev_num.value.dfloat == (long double)car(args).value.integer)
 					goto next;
 			}
 
@@ -2839,7 +2839,7 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			if (prev_num.type == ATOM_TYPE_INTEGER) {
 				// float == int.
-				if ((double)prev_num.value.integer == car(args).value.dfloat)
+				if ((long double)prev_num.value.integer == car(args).value.dfloat)
 					goto next;
 			} else {
 				// float == float.
@@ -2888,7 +2888,7 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 					goto next;
 			} else {
 				// float == int.
-				if (prev_num.value.dfloat < (double)car(args).value.integer)
+				if (prev_num.value.dfloat < (long double)car(args).value.integer)
 					goto next;
 			}
 
@@ -2897,7 +2897,7 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			if (prev_num.type == ATOM_TYPE_INTEGER) {
 				// float == int.
-				if ((double)prev_num.value.integer < car(args).value.dfloat)
+				if ((long double)prev_num.value.integer < car(args).value.dfloat)
 					goto next;
 			} else {
 				// float == float.
@@ -2946,7 +2946,7 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 					goto next;
 			} else {
 				// float == int.
-				if (prev_num.value.dfloat > (double)car(args).value.integer)
+				if (prev_num.value.dfloat > (long double)car(args).value.integer)
 					goto next;
 			}
 
@@ -2955,7 +2955,7 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 		} else if (car(args).type == ATOM_TYPE_FLOAT) {
 			if (prev_num.type == ATOM_TYPE_INTEGER) {
 				// float == int.
-				if ((double)prev_num.value.integer > car(args).value.dfloat)
+				if ((long double)prev_num.value.integer > car(args).value.dfloat)
 					goto next;
 			} else {
 				// float == float.
