@@ -2249,6 +2249,7 @@ err_alloc_macro_str:
 		}
 
 		_sntprintf(*buf, buflen + 1, _T("#<POINTER:%p>"), atom.value.pointer);
+		break;
 	default:
 		// Unknown
 		*buf = _tcsdup(_T("Unknown type. Don't know how to display this"));
