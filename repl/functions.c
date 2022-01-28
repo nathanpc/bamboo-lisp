@@ -125,7 +125,7 @@ bamboo_error_t repl_populate_builtins(env_t *env) {
 	IF_BAMBOO_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("PLOT-CLOSE"),
-			builtin_plot_destroy);
+		builtin_plot_destroy);
 	IF_BAMBOO_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("PLOT-EQN"), builtin_plot_equation);
@@ -262,7 +262,7 @@ bamboo_error_t builtin_plot_destroy(atom_t args, atom_t *result) {
 	// Check if we don't have any arguments.
 	if (nilp(args)) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("A file path must be supplied to this function"));
+			_T("A plotting handle must be supplied to this function"));
 	}
 
 	// Check if we have more than a single argument.
@@ -304,7 +304,7 @@ bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result) {
 	// Check if we don't have any arguments.
 	if (nilp(args)) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("A file path must be supplied to this function"));
+			_T("A plotting handle must be supplied to this function"));
 	}
 
 	// Check if we have more than two arguments.
