@@ -19,6 +19,9 @@
     <Filter Include="Documentation">
       <UniqueIdentifier>{5078965c-e0ec-402d-8051-30f7f94e53b6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Plotting">
+      <UniqueIdentifier>{4020bcec-2147-4f58-8149-310477e13d42}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\bamboo.c">
@@ -39,6 +42,12 @@
     <ClCompile Include="..\repl\strutils.c">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="..\repl\plotting\gnuplot.c">
+      <Filter>Plotting</Filter>
+    </ClCompile>
+    <ClCompile Include="..\repl\windows\winutils.c">
+      <Filter>Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\bamboo.h">
@@ -57,6 +66,15 @@
       <Filter>Utilities</Filter>
     </ClInclude>
     <ClInclude Include="..\repl\common\tgetopt.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="..\repl\plotting\gnuplot.h">
+      <Filter>Plotting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\repl\plotting\plot.h">
+      <Filter>Plotting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\repl\windows\winutils.h">
       <Filter>Utilities</Filter>
     </ClInclude>
   </ItemGroup>
