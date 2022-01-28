@@ -239,8 +239,8 @@ bamboo_error_t builtin_plot_init(atom_t args, atom_t *result) {
 		return BAMBOO_OK;
 
 	// Set the result atom.
-	result->type = ATOM_TYPE_INTEGER;
-	result->value.integer = (int64_t)plt;
+	result->type = ATOM_TYPE_POINTER;
+	result->value.pointer = (void *)plt;
 
 	return BAMBOO_OK;
 }
@@ -273,13 +273,13 @@ bamboo_error_t builtin_plot_destroy(atom_t args, atom_t *result) {
 
 	// Check if we have a pointer argument.
 	plthnd = car(args);
-	if (plthnd.type != ATOM_TYPE_INTEGER) {
+	if (plthnd.type != ATOM_TYPE_POINTER) {
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 			_T("Plotting handle atom must be of type pointer"));
 	}
 
 	// Get the plotting handle and promptly destroy it.
-	plt = (plot_t *)plthnd.value.integer;
+	plt = (plot_t *)plthnd.value.pointer;
 	plot_destroy(plt);
 
 	return BAMBOO_OK;
@@ -315,7 +315,7 @@ bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result) {
 
 	// Check if we have a pointer argument.
 	plthnd = car(args);
-	if (plthnd.type != ATOM_TYPE_INTEGER) {
+	if (plthnd.type != ATOM_TYPE_POINTER) {
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 			_T("Plotting handle atom must be of type pointer"));
 	}
@@ -328,7 +328,7 @@ bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result) {
 	}
 
 	// Get the plotting handle, the equation, and plot it.
-	plt = (plot_t *)plthnd.value.integer;
+	plt = (plot_t *)plthnd.value.pointer;
 	plot_equation(plt, *eqn.value.str);
 
 	return BAMBOO_OK;
