@@ -4,7 +4,8 @@
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
 # Environment
-PLATFORM := $(shell uname -s)
+PLATFORM     := $(shell uname -s)
+USE_PLOTTING := gnuplot
 
 # Tools
 CC    = gcc
@@ -24,6 +25,11 @@ endif
 # Flags
 CFLAGS  = -Wall -Wno-psabi
 LDFLAGS = -lm
+
+# Enable plotting.
+ifdef USE_PLOTTING
+	CFLAGS += -DUSE_PLOTTING
+endif
 
 # Enable Unicode on Windows platforms.
 ifeq ($(PLATFORM), Windows)

@@ -9,10 +9,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "fileutils.h"
+#ifdef USE_PLOTTING
+	#include "plotting/plot.h"
+#endif  // USE_PLOTTING
 
 // Built-in function prototypes.
 bamboo_error_t builtin_quit(atom_t args, atom_t *result);
 bamboo_error_t builtin_load(atom_t args, atom_t *result);
+#ifdef USE_PLOTTING
+bamboo_error_t builtin_plot_init(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_destroy(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result);
+#endif  // USE_PLOTTING
 
 /**
  * Loads the contents of a source file into the given environment.
@@ -66,6 +74,8 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 				// Ignore things that are meant to be ignored.
 				end++;
 				continue;
+			default:
+				break;
 			}
 		}
 
@@ -109,6 +119,19 @@ bamboo_error_t repl_populate_builtins(env_t *env) {
 	err = bamboo_env_set_builtin(*env, _T("LOAD"), builtin_load);
 	IF_BAMBOO_ERROR(err)
 		return err;
+
+#ifdef USE_PLOTTING
+	err = bamboo_env_set_builtin(*env, _T("PLOT-INIT"), builtin_plot_init);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-CLOSE"),
+			builtin_plot_destroy);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-EQN"), builtin_plot_equation);
+	IF_BAMBOO_ERROR(err)
+		return err;
+#endif  // USE_PLOTTING
 
 	return BAMBOO_OK;
 }
@@ -189,3 +212,125 @@ bamboo_error_t builtin_load(atom_t args, atom_t *result) {
 	// Load the file.
 	return load_source(bamboo_get_root_env(), *fname.value.str, result);
 }
+
+#ifdef USE_PLOTTING
+/**
+ * Initializes a plotting environment.
+ *
+ * (plot-init) -> pointer
+ *
+ * @return Pointer to the plotting handle. NULL if an error occured.
+ */
+bamboo_error_t builtin_plot_init(atom_t args, atom_t *result) {
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (!nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("No arguments should be supplied to this function"));
+	}
+
+	// Initialize the plotting environment.
+	plt = plot_init();
+	if (plt == NULL)
+		return BAMBOO_OK;
+
+	// Set the result atom.
+	result->type = ATOM_TYPE_INTEGER;
+	result->value.integer = (int64_t)plt;
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Destroys a plotting environment.
+ *
+ * (plot-close plthnd)
+ *
+ * @param plthnd Plotting handle pointer.
+ */
+bamboo_error_t builtin_plot_destroy(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A file path must be supplied to this function"));
+	}
+
+	// Check if we have more than a single argument.
+	if (!nilp(cdr(args))) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only a single argument should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_INTEGER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Get the plotting handle and promptly destroy it.
+	plt = (plot_t *)plthnd.value.integer;
+	plot_destroy(plt);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Plots an equation.
+ *
+ * (plot-eqn plthnd eqn)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param eqn    Equation string to be plotted.
+ */
+bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t eqn;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A file path must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_INTEGER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a string argument.
+	eqn = car(cdr(args));
+	if (eqn.type != ATOM_TYPE_STRING) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Equation atom must be of type string"));
+	}
+
+	// Get the plotting handle, the equation, and plot it.
+	plt = (plot_t *)plthnd.value.integer;
+	plot_equation(plt, *eqn.value.str);
+
+	return BAMBOO_OK;
+}
+#endif  // USE_PLOTTING
