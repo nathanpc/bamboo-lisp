@@ -172,7 +172,8 @@ typedef enum {
 	ATOM_TYPE_PAIR,
 	ATOM_TYPE_BUILTIN,
 	ATOM_TYPE_CLOSURE,
-	ATOM_TYPE_MACRO
+	ATOM_TYPE_MACRO,
+	ATOM_TYPE_POINTER
 } atom_type_t;
 
 // Atom structures typedefs.
@@ -195,6 +196,7 @@ struct atom_s {
 		long double dfloat;
 		bool boolean;
 		builtin_func_t builtin;
+		void *pointer;
 	} value;
 };
 
@@ -235,6 +237,7 @@ atom_t bamboo_string(const TCHAR *str);
 atom_t bamboo_builtin(builtin_func_t func);
 bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 	atom_t *result);
+atom_t bamboo_pointer(void *pointer);
 
 // Parsing and evaluation.
 bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,

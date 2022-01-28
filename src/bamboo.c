@@ -530,6 +530,22 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 	return BAMBOO_OK;
 }
 
+/**
+ * Builds an pointer atom.
+ *
+ * @param  pointer Pointer to be stored.
+ * @return         Pointer atom.
+ */
+atom_t bamboo_pointer(void *pointer) {
+	atom_t atom;
+
+	// Populate the atom.
+	atom.type = ATOM_TYPE_POINTER;
+	atom.value.pointer = pointer;
+
+	return atom;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
 //                           List Atom Manipulation                           //
@@ -2218,6 +2234,21 @@ err_alloc_macro_str:
 		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 				_T("string to represent macro atom"));
 		break;
+	case ATOM_TYPE_POINTER:
+		// Pointer
+#if defined(_MSC_VER) && (_MSC_VER <= 1400)
+		buflen = 32;
+#else
+		buflen = _sntprintf(NULL, 0, _T("#<POINTER:%p>"), atom.value.pointer);
+#endif  // _MSC_VER
+
+		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		if (*buf == NULL) {
+			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
+				_T("string to represent pointer atom"));
+		}
+
+		_sntprintf(*buf, buflen + 1, _T("#<POINTER:%p>"), atom.value.pointer);
 	default:
 		// Unknown
 		*buf = _tcsdup(_T("Unknown type. Don't know how to display this"));
