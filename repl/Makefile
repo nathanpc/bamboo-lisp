@@ -35,15 +35,15 @@ $(BUILDDIR)/plotting/stamp:
 	$(MKDIR) $(@D)
 	$(TOUCH) $@
 
-run: $(TARGET)
+run: compile
 	$(TARGET) -l ../corelib/core.bam
 
 debug: CFLAGS += -g3 -DDEBUG
-debug: clean $(TARGET)
+debug: clean compile
 	$(GDB) $(TARGET)
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
-memcheck: clean $(TARGET)
+memcheck: clean compile
 	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all \
 		--track-origins=yes --log-file=$(BUILDDIR)/valgrind.log $(TARGET)
 	cat $(BUILDDIR)/valgrind.log
