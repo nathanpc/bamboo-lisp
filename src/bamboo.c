@@ -106,9 +106,6 @@ void set_error_msg(const TCHAR *msg);
 void fatal_error(bamboo_error_t err, const TCHAR *msg);
 void gc_mark(atom_t root);
 void gc(bool respect_marks);
-atom_t list_ref(atom_t list, uint16_t index);
-void list_set(atom_t list, uint16_t index, atom_t value);
-void list_reverse(atom_t *list);
 atom_t shallow_copy_list(atom_t list);
 bamboo_error_t lex(const TCHAR *str, token_t *token);
 bamboo_error_t parse_hash_expr(const token_t *token, const TCHAR **end,
@@ -726,7 +723,7 @@ uint16_t bamboo_list_count(atom_t list) {
  * @param  index Index of the element you want.
  * @return       Element at the specified index of the list.
  */
-atom_t list_ref(atom_t list, uint16_t index) {
+atom_t bamboo_list_ref(atom_t list, uint16_t index) {
 	// Iterate through the list.
 	while (index--)
 		list = cdr(list);
@@ -743,7 +740,7 @@ atom_t list_ref(atom_t list, uint16_t index) {
  * @param index Index of the element you want to change.
  * @param value New element you want placed at the specified index of the list.
  */
-void list_set(atom_t list, uint16_t index, atom_t value) {
+void bamboo_list_set(atom_t list, uint16_t index, atom_t value) {
 	// Iterate through the list.
 	while (index--)
 		list = cdr(list);
@@ -757,7 +754,7 @@ void list_set(atom_t list, uint16_t index, atom_t value) {
  *
  * @param list Pointer to the list that will have its elements reversed.
  */
-void list_reverse(atom_t *list) {
+void bamboo_list_reverse(atom_t *list) {
 	atom_t tail = nil;
 
 	// Iterate over the list reversing its elements into tail.
@@ -1333,7 +1330,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Place it in the stack for later evaluation.
 					stack = new_stack_frame(stack, env, cdr(args));
-					list_set(stack, STACK_EVAL_OP_INDEX, op);
+					bamboo_list_set(stack, STACK_EVAL_OP_INDEX, op);
 					expr = car(args);
 
 					continue;
@@ -1352,8 +1349,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					case ATOM_TYPE_SYMBOL:
 						// Defining a simple symbol.
 						stack = new_stack_frame(stack, env, nil);
-						list_set(stack, STACK_EVAL_OP_INDEX, op);
-						list_set(stack, STACK_EVAL_ARGS_INDEX, symbol);
+						bamboo_list_set(stack, STACK_EVAL_OP_INDEX, op);
+						bamboo_list_set(stack, STACK_EVAL_ARGS_INDEX, symbol);
 						expr = car(cdr(args));
 						continue;
 					case ATOM_TYPE_PAIR:
@@ -1431,7 +1428,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Evaluate the apply by the magic of the stack.
 					stack = new_stack_frame(stack, env, cdr(args));
-					list_set(stack, STACK_EVAL_OP_INDEX, op);
+					bamboo_list_set(stack, STACK_EVAL_OP_INDEX, op);
 					expr = car(args);
 					continue;
 				} else {
@@ -1503,8 +1500,8 @@ bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env) {
 	atom_t body;
 
 	// Get the different parts of the stack.
-	*env = list_ref(*stack, STACK_ENV_INDEX);
-	body = list_ref(*stack, STACK_BODY_INDEX);
+	*env = bamboo_list_ref(*stack, STACK_ENV_INDEX);
+	body = bamboo_list_ref(*stack, STACK_BODY_INDEX);
 	*expr = car(body);
 
 	// Check the next item in line.
@@ -1514,7 +1511,7 @@ bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env) {
 		*stack = car(*stack);
 	} else {
 		// Advance the body of the atom to the next item in line.
-		list_set(*stack, STACK_BODY_INDEX, body);
+		bamboo_list_set(*stack, STACK_BODY_INDEX, body);
 	}
 
 	return BAMBOO_OK;
@@ -1543,20 +1540,20 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
 	atom_t body;
 
 	// If we have anything in the body just return it then.
-	body = list_ref(*stack, STACK_BODY_INDEX);
+	body = bamboo_list_ref(*stack, STACK_BODY_INDEX);
 	if (!nilp(body))
 		return eval_expr_exec(stack, expr, env);
 
 	// Get the op and function arguments from the stack frame.
-	op = list_ref(*stack, STACK_EVAL_OP_INDEX);
-	args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+	op = bamboo_list_ref(*stack, STACK_EVAL_OP_INDEX);
+	args = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 
 	// Get all of the parameters from the stack frame.
 	*env = bamboo_env_new(car(op));
 	arg_names = car(cdr(op));
 	body = cdr(cdr(op));
-	list_set(*stack, STACK_ENV_INDEX, *env);
-	list_set(*stack, STACK_BODY_INDEX, body);
+	bamboo_list_set(*stack, STACK_ENV_INDEX, *env);
+	bamboo_list_set(*stack, STACK_BODY_INDEX, body);
 
 	// Go through the arguments binding them to the environment.
 	while (!nilp(arg_names)) {
@@ -1587,7 +1584,7 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
 			_T("Arguments left over after iterating through argument names"));
 	}
 
-	list_set(*stack, STACK_EVAL_ARGS_INDEX, nil);
+	bamboo_list_set(*stack, STACK_EVAL_ARGS_INDEX, nil);
 	return eval_expr_exec(stack, expr, env);
 }
 
@@ -1612,13 +1609,13 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 	atom_t args;
 
 	// Get the op and arguments from the stack frame.
-	op = list_ref(*stack, STACK_EVAL_OP_INDEX);
-	args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+	op = bamboo_list_ref(*stack, STACK_EVAL_OP_INDEX);
+	args = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 
 	// Reverse the arguments if we have any.
 	if (!nilp(args)) {
-		list_reverse(&args);
-		list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
+		bamboo_list_reverse(&args);
+		bamboo_list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
 	}
 
 	// Handle the apply special form.
@@ -1637,8 +1634,8 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 			}
 
 			// Go to the next one.
-			list_set(*stack, STACK_EVAL_OP_INDEX, op);
-			list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
+			bamboo_list_set(*stack, STACK_EVAL_OP_INDEX, op);
+			bamboo_list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
 		}
 	}
 
@@ -1682,9 +1679,9 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 	atom_t body;
 
 	// Gets the parameters from the stack frame.
-	*env = list_ref(*stack, STACK_ENV_INDEX);
-	op = list_ref(*stack, STACK_EVAL_OP_INDEX);
-	body = list_ref(*stack, STACK_BODY_INDEX);
+	*env = bamboo_list_ref(*stack, STACK_ENV_INDEX);
+	op = bamboo_list_ref(*stack, STACK_EVAL_OP_INDEX);
+	body = bamboo_list_ref(*stack, STACK_BODY_INDEX);
 
 	// Check if we are still running a procedure. If so, just ignore the result.
 	if (!nilp(body))
@@ -1694,17 +1691,17 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 	if (nilp(op)) {
 		// Finished evaluating op.
 		op = *result;
-		list_set(*stack, STACK_EVAL_OP_INDEX, op);
+		bamboo_list_set(*stack, STACK_EVAL_OP_INDEX, op);
 
 		// Are we doing a macro?
 		if (op.type == ATOM_TYPE_MACRO) {
 			// Don't evaluate macro arguments.
-			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
+			args = bamboo_list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			*stack = new_stack_frame(*stack, *env, nil);
 			op.type = ATOM_TYPE_CLOSURE;
-			list_set(*stack, STACK_EVAL_OP_INDEX, op);
-			list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
+			bamboo_list_set(*stack, STACK_EVAL_OP_INDEX, op);
+			bamboo_list_set(*stack, STACK_EVAL_ARGS_INDEX, args);
 
 			return eval_expr_bind(stack, expr, env);
 		}
@@ -1713,14 +1710,14 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
 			atom_t symbol;
 
-			symbol = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+			symbol = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 			(void)bamboo_env_set(*env, symbol, *result);
 			*stack = car(*stack);
 			*expr = cons(bamboo_symbol(_T("QUOTE")), cons(symbol, nil));
 
 			return BAMBOO_OK;
 		} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
-			args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
+			args = bamboo_list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			// Choose which path to go for an if statement.
 			if ((result->type == ATOM_TYPE_BOOLEAN) && (!result->value.boolean)) {
@@ -1743,12 +1740,12 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 	} else {
 store_argument:
 		// Store the evaluated argument.
-		args = list_ref(*stack, STACK_EVAL_ARGS_INDEX);
-		list_set(*stack, STACK_EVAL_ARGS_INDEX, cons(*result, args));
+		args = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
+		bamboo_list_set(*stack, STACK_EVAL_ARGS_INDEX, cons(*result, args));
 	}
 
 	// Get the next set of arguments to evaluate.
-	args = list_ref(*stack, STACK_PENDING_ARGS_INDEX);
+	args = bamboo_list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 	if (nilp(args)) {
 		// No more arguments left to evaluate.
 		return eval_expr_apply(stack, expr, env);
@@ -1756,7 +1753,7 @@ store_argument:
 
 	// Evaluate the next argument.
 	*expr = car(args);
-	list_set(*stack, STACK_PENDING_ARGS_INDEX, cdr(args));
+	bamboo_list_set(*stack, STACK_PENDING_ARGS_INDEX, cdr(args));
 
 	return BAMBOO_OK;
 }
