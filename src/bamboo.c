@@ -106,7 +106,6 @@ void set_error_msg(const TCHAR *msg);
 void fatal_error(bamboo_error_t err, const TCHAR *msg);
 void gc_mark(atom_t root);
 void gc(bool respect_marks);
-uint16_t list_count(atom_t list);
 atom_t list_ref(atom_t list, uint16_t index);
 void list_set(atom_t list, uint16_t index, atom_t value);
 void list_reverse(atom_t *list);
@@ -703,7 +702,7 @@ atom_t shallow_copy_list(atom_t list) {
  * @param  list List atom to have its elements counted.
  * @return      Number of elements in the list. 0 if it isn't a valid list.
  */
-uint16_t list_count(atom_t list) {
+uint16_t bamboo_list_count(atom_t list) {
 	uint16_t count = 0;
 
 	// Iterate over the list until we reach the final nil atom.
@@ -1318,7 +1317,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 				// Check which special form we need to evaluate.
 				if (_tcscmp(*op.value.symbol, _T("QUOTE")) == 0) {
 					// Check if we have the single required arguments.
-					if (list_count(args) != 1) {
+					if (bamboo_list_count(args) != 1) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 							_T("Wrong number of arguments. Expected 1"));
 					}
@@ -1327,7 +1326,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					*result = car(args);
 				} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
 					// Check if we have the right number of arguments.
-					if (list_count(args) != 3) {
+					if (bamboo_list_count(args) != 3) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 							_T("Wrong number of arguments. Expected 3"));
 					}
@@ -1342,7 +1341,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) < 2) {
+					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 							_T("Wrong number of arguments. Expected at least 2"));
 					}
@@ -1381,7 +1380,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					}
 				} else if (_tcscmp(*op.value.symbol, _T("LAMBDA")) == 0) {
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) < 2) {
+					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 							_T("Wrong number of arguments. Expected at least 2"));
 					}
@@ -1393,7 +1392,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					atom_t macro;
 
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) < 2) {
+					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 							_T("Wrong number of arguments. Expected at least 2"));
 					}
@@ -1425,7 +1424,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					}
 				} else if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
 					// Check if we have both of the required 2 arguments.
-					if (list_count(args) < 2) {
+					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 							_T("Wrong number of arguments. Expected at least 2"));
 					}
@@ -2413,7 +2412,7 @@ void fatal_error(bamboo_error_t err, const TCHAR *msg) {
 // (car pair) -> atom
 bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects a single argument"));
 	}
@@ -2431,7 +2430,7 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 // (cdr pair) -> atom
 bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects a single argument"));
 	}
@@ -2449,7 +2448,7 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 // (cons car cdr) -> pair
 bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 2) {
+	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 2 arguments"));
 	}
@@ -2468,7 +2467,7 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 	num.value.integer = 0;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -2522,7 +2521,7 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 	num.value.integer = 0;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -2594,7 +2593,7 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 	num.value.integer = 0;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -2666,7 +2665,7 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 	num.value.dfloat = (long double)0;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -2726,7 +2725,7 @@ bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
 
 	// Check if we have the right number of arguments.
 	*result = nil;
-	if (list_count(args) != 2) {
+	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 2 arguments"));
 	}
@@ -2769,7 +2768,7 @@ bamboo_error_t builtin_modulo(atom_t args, atom_t *result) {
 	*result = nil;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 2) {
+	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 2 arguments"));
 	}
@@ -2820,7 +2819,7 @@ bamboo_error_t builtin_floor(atom_t args, atom_t *result) {
 	*result = nil;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects a single argument"));
 	}
@@ -2849,7 +2848,7 @@ bamboo_error_t builtin_round(atom_t args, atom_t *result) {
 	*result = nil;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects a single argument"));
 	}
@@ -2878,7 +2877,7 @@ bamboo_error_t builtin_ceil(atom_t args, atom_t *result) {
 	*result = nil;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects a single argument"));
 	}
@@ -2905,7 +2904,7 @@ bamboo_error_t builtin_ceil(atom_t args, atom_t *result) {
 // (not bool) -> bool
 bamboo_error_t builtin_not(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects exactly 1 argument"));
 	}
@@ -2922,7 +2921,7 @@ bamboo_error_t builtin_and(atom_t args, atom_t *result) {
 	atom_t prev_atom;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -2952,7 +2951,7 @@ bamboo_error_t builtin_or(atom_t args, atom_t *result) {
 	atom_t prev_atom;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -2982,7 +2981,7 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 	atom_t prev_num;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -3040,7 +3039,7 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 	atom_t prev_num;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -3098,7 +3097,7 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 	atom_t prev_num;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 2) {
+	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 2 arguments"));
 	}
@@ -3157,7 +3156,7 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 	atom_t b;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 2) {
+	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 2 arguments"));
 	}
@@ -3208,7 +3207,7 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 // (nil? atom) -> boolean
 bamboo_error_t builtin_nilp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3220,7 +3219,7 @@ bamboo_error_t builtin_nilp(atom_t args, atom_t *result) {
 // (pair? atom) -> boolean
 bamboo_error_t builtin_pairp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3232,7 +3231,7 @@ bamboo_error_t builtin_pairp(atom_t args, atom_t *result) {
 // (symbol? atom) -> boolean
 bamboo_error_t builtin_symbolp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3244,7 +3243,7 @@ bamboo_error_t builtin_symbolp(atom_t args, atom_t *result) {
 // (integer? atom) -> boolean
 bamboo_error_t builtin_integerp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3256,7 +3255,7 @@ bamboo_error_t builtin_integerp(atom_t args, atom_t *result) {
 // (float? atom) -> boolean
 bamboo_error_t builtin_floatp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3268,7 +3267,7 @@ bamboo_error_t builtin_floatp(atom_t args, atom_t *result) {
 // (numeric? atom) -> boolean
 bamboo_error_t builtin_numericp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3281,7 +3280,7 @@ bamboo_error_t builtin_numericp(atom_t args, atom_t *result) {
 // (boolean? atom) -> boolean
 bamboo_error_t builtin_booleanp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3293,7 +3292,7 @@ bamboo_error_t builtin_booleanp(atom_t args, atom_t *result) {
 // (builtin? atom) -> boolean
 bamboo_error_t builtin_builtinp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3305,7 +3304,7 @@ bamboo_error_t builtin_builtinp(atom_t args, atom_t *result) {
 // (closure? atom) -> boolean
 bamboo_error_t builtin_closurep(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3317,7 +3316,7 @@ bamboo_error_t builtin_closurep(atom_t args, atom_t *result) {
 // (macro? atom) -> boolean
 bamboo_error_t builtin_macrop(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 1) {
+	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects 1 argument"));
 	}
@@ -3350,7 +3349,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	TCHAR *buf = NULL;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) < 1) {
+	if (bamboo_list_count(args) < 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects at least 1 argument"));
 	}
@@ -3506,7 +3505,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 // (newline) -> nil
 bamboo_error_t builtin_newline(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 0) {
+	if (bamboo_list_count(args) != 0) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects no arguments"));
 	}
@@ -3523,7 +3522,7 @@ bamboo_error_t builtin_display_env(atom_t args, atom_t *result) {
 	env_t current;
 
 	// Check if we have the right number of arguments.
-	if (list_count(args) != 0) {
+	if (bamboo_list_count(args) != 0) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
 			_T("This function expects no arguments"));
 	}

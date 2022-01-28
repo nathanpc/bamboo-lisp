@@ -63,6 +63,7 @@ extern "C" {
 		#define _vftprintf vfwprintf
 		#define _puttchar  putwchar
 		#define _puttc     putwc
+		#define _fputts    fputws
 		#define _gettchar  getwchar
 
 		// String operations.
@@ -97,6 +98,7 @@ extern "C" {
 		#define _vftprintf vfprintf
 		#define _puttchar  putchar
 		#define _puttc     putc
+		#define _fputts    fputs
 		#define _gettchar  getchar
 
 		// String operations.
@@ -242,6 +244,9 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 // Error handling.
 const TCHAR *bamboo_error_detail(void);
 bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg);
+
+// Helper functions.
+uint16_t bamboo_list_count(atom_t list);
 
 // Debugging.
 void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err);
