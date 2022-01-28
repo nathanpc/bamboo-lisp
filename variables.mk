@@ -23,7 +23,7 @@ endif
 
 # Flags
 CFLAGS  = -Wall -Wno-psabi
-LDFLAGS = 
+LDFLAGS = -lm
 
 # Enable Unicode on Windows platforms.
 ifeq ($(PLATFORM), Windows)
