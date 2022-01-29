@@ -36,6 +36,11 @@ plot_t* plot_init(void) {
 	if (plt == NULL)
 		goto retplt;
 
+	// Setup the defaults.
+	plt->pcount = 0;
+	*plt->sname = _T('\0');
+	plot_set_type(plt, _T("lines"));
+
 retplt:
 	return plt;
 }
@@ -57,13 +62,61 @@ void plot_destroy(plot_t *plt) {
 		}
 	}
 	
-	// Free our plottin handle.
+	// Free our plotting handle.
 	free(plt);
 	plt = NULL;
 }
 
+void plot_set_title(plot_t *plt, const TCHAR *title) {
+	gnuplot_cmd(plt, _T("set title \"") SPEC_STR _T("\""), title);
+}
+
+void plot_set_xlabel(plot_t *plt, const TCHAR *label) {
+	gnuplot_cmd(plt, _T("set xlabel \"") SPEC_STR _T("\""), label);
+}
+
+void plot_set_ylabel(plot_t *plt, const TCHAR *label) {
+	gnuplot_cmd(plt, _T("set ylabel \"") SPEC_STR _T("\""), label);
+}
+
+void plot_set_type(plot_t *plt, const TCHAR *type) {
+	uint8_t i;
+
+	// Copy the type string while making sure it's lowercase.
+	*plt->pstyle = _T('\0');
+	for (i = 0; i < GNUPLOT_STYLE_MAX_LEN; i++) {
+		// Copy the character as lowercase.
+		plt->pstyle[i] = _totlower(type[i]);
+
+		// Are we there yet?
+		if (type[i] == _T('\0')) {
+			return;
+		}
+	}
+
+	// Make sure we terminate the string.
+	plt->pstyle[GNUPLOT_STYLE_MAX_LEN] = _T('\0');
+}
+
+void plot_set_series_name(plot_t *plt, const TCHAR *name) {
+	*plt->sname = _T('\0');
+	_tcsncat(plt->sname, name, GNUPLOT_TITLE_MAX_LEN);
+}
+
+void plot_clear(plot_t *plt) {
+	plt->pcount = 0;
+	gnuplot_cmd(plt, _T("clear"));
+}
+
 void plot_equation(plot_t *plt, const TCHAR *equation) {
-	gnuplot_cmd(plt, _T("plot ") SPEC_STR, equation);
+	// Build the plot/replot command.
+	gnuplot_cmd(plt, SPEC_STR _T(" ") SPEC_STR _T(" title \"") SPEC_STR
+		_T("\" with ") SPEC_STR,
+		(plt->pcount == 0) ? _T("plot") : _T("replot"), equation,
+		(*plt->sname == _T('\0')) ? equation : plt->sname, plt->pstyle);
+
+	// Increment the plot count.
+	plt->pcount++;
 }
 
 
@@ -114,8 +167,15 @@ void gnuplot_cmd(plot_t *plt, const TCHAR *cmd, ...) {
 
 	// Perform a printf command to GNUplot.
 	va_start(ap, cmd);
+#ifdef DEBUG
+	_vftprintf(stdout, cmd, ap);
+#endif  // DEBUG
 	_vftprintf(plt->gplot, cmd, ap);
 	va_end(ap);
+
+#ifdef DEBUG
+	_tprintf(LINEBREAK);
+#endif  // DEBUG
 
 	// Make sure we flush the command we've just sent.
 	_fputts(_T("\n"), plt->gplot);

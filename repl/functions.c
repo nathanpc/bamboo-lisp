@@ -19,6 +19,12 @@ bamboo_error_t builtin_load(atom_t args, atom_t *result);
 #ifdef USE_PLOTTING
 bamboo_error_t builtin_plot_init(atom_t args, atom_t *result);
 bamboo_error_t builtin_plot_destroy(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_clear(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_title(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_xlabel(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_ylabel(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_type(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_name(atom_t args, atom_t *result);
 bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result);
 #endif  // USE_PLOTTING
 
@@ -126,6 +132,27 @@ bamboo_error_t repl_populate_builtins(env_t *env) {
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("PLOT-CLOSE"),
 		builtin_plot_destroy);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-CLEAR"), builtin_plot_clear);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-TITLE"), builtin_plot_title);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-XLABEL"), builtin_plot_xlabel);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-YLABEL"), builtin_plot_ylabel);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-NAME"), builtin_plot_name);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-TYPE"), builtin_plot_type);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-STYLE"), builtin_plot_type);
 	IF_BAMBOO_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("PLOT-EQN"), builtin_plot_equation);
@@ -281,6 +308,291 @@ bamboo_error_t builtin_plot_destroy(atom_t args, atom_t *result) {
 	// Get the plotting handle and promptly destroy it.
 	plt = (plot_t *)plthnd.value.pointer;
 	plot_destroy(plt);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Clears a plotting window.
+ *
+ * (plot-clear plthnd)
+ *
+ * @param plthnd Plotting handle pointer.
+ */
+bamboo_error_t builtin_plot_clear(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than a single argument.
+	if (!nilp(cdr(args))) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only a single argument should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Get the plotting handle and promptly destroy it.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_clear(plt);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Sets the title of a plot.
+ *
+ * (plot-title plthnd title)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param title  Title of the plot.
+ */
+bamboo_error_t builtin_plot_title(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t title;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a string argument.
+	title = car(cdr(args));
+	if (title.type != ATOM_TYPE_STRING) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plot title atom must be of type string"));
+	}
+
+	// Get the plotting handle, the equation, and plot it.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_set_title(plt, *title.value.str);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Sets the label of the X axis of a plot.
+ *
+ * (plot-xlabel plthnd label)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param label  Axis label.
+ */
+bamboo_error_t builtin_plot_xlabel(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t label;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a string argument.
+	label = car(cdr(args));
+	if (label.type != ATOM_TYPE_STRING) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Axis label atom must be of type string"));
+	}
+
+	// Get the plotting handle, the equation, and plot it.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_set_xlabel(plt, *label.value.str);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Sets the label of the Y axis of a plot.
+ *
+ * (plot-ylabel plthnd label)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param label  Axis label.
+ */
+bamboo_error_t builtin_plot_ylabel(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t label;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a string argument.
+	label = car(cdr(args));
+	if (label.type != ATOM_TYPE_STRING) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Axis label atom must be of type string"));
+	}
+
+	// Get the plotting handle, the equation, and plot it.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_set_ylabel(plt, *label.value.str);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Sets the name of the series to be displayed in the legend of the plot.
+ *
+ * (plot-name plthnd name)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param name   Series name.
+ */
+bamboo_error_t builtin_plot_name(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t name;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a string argument.
+	name = car(cdr(args));
+	if (name.type != ATOM_TYPE_STRING) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Series name atom must be of type string"));
+	}
+
+	// Get the plotting handle, the equation, and plot it.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_set_series_name(plt, *name.value.str);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Sets the type/style of the plot.
+ *
+ * (plot-type plthnd type)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param type   Graphing style.
+ */
+bamboo_error_t builtin_plot_type(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t type;
+	plot_t *plt;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a symbol argument.
+	type = car(cdr(args));
+	if (type.type != ATOM_TYPE_SYMBOL) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plot type atom must be of type symbol"));
+	}
+
+	// Get the plotting handle, the equation, and plot it.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_set_type(plt, *type.value.symbol);
 
 	return BAMBOO_OK;
 }

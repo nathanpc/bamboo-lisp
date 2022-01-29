@@ -18,9 +18,11 @@ extern "C" {
 // for now.
 #include "gnuplot.h"
 
-//
-// Initialization and destruction.
-//
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                       Initialization and Destruction                       //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Initializes the plotting environment.
@@ -36,9 +38,64 @@ plot_t* plot_init(void);
  */
 void plot_destroy(plot_t *plt);
 
-//
-// Plotting and graphing.
-//
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                            Settings and Styling                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Sets the title of graph.
+ *
+ * @param plt   Plotting handle.
+ * @param title Graph main title.
+ */
+void plot_set_title(plot_t *plt, const TCHAR *title);
+
+/**
+ * Sets the type of graph that will be used to display the series.
+ *
+ * @param plt  Plotting handle.
+ * @param type Name of the graph type.
+ */
+void plot_set_type(plot_t *plt, const TCHAR *type);
+
+/**
+ * Sets the name of the series to be displayed in the legend.
+ *
+ * @param plt  Plotting handle.
+ * @param name Series name to be displayed in the legend.
+ */
+void plot_set_series_name(plot_t *plt, const TCHAR *name);
+
+/**
+ * Sets the label of the X axis.
+ *
+ * @param plt   Plotting handle.
+ * @param label X axis label.
+ */
+void plot_set_xlabel(plot_t *plt, const TCHAR *label);
+
+/**
+ * Sets the label of the Y axis.
+ *
+ * @param plt   Plotting handle.
+ * @param label Y axis label.
+ */
+void plot_set_ylabel(plot_t *plt, const TCHAR *label);
+
+////////////////////////////////////////////////////////////////////////////////
+//                                                                            //
+//                           Plotting and Graphing                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Clears the plots and starts over.
+ *
+ * @param plt Plotting handle.
+ */
+void plot_clear(plot_t *plt);
 
 /**
  * Plots a mathematical function.
