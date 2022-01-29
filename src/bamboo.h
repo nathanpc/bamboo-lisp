@@ -78,6 +78,7 @@ extern "C" {
 		#define _tcsncpy  wcsncpy
 		#define _tcsdup   wcsdup
 		#define _tcslen   wcslen
+		#define _totlower towlower
 		#define _totupper towupper
 
 		// String conversions.
@@ -113,6 +114,7 @@ extern "C" {
 		#define _tcsncpy  strncpy
 		#define _tcsdup   strdup
 		#define _tcslen   strlen
+		#define _totlower tolower
 		#define _totupper toupper
 
 		// String conversions.
