@@ -105,6 +105,16 @@ void plot_clear(plot_t *plt);
  */
 void plot_equation(plot_t *plt, const TCHAR *equation);
 
+/**
+ * Plots a series of data points.
+ *
+ * @param plt Plotting handle.
+ * @param len Length of the arrays of values.
+ * @param x   Array of X values.
+ * @param y   Array of Y values.
+ */
+void plot_data_l(plot_t *plt, size_t len, long double x[], long double y[]);
+
 #ifdef __cplusplus
 }
 #endif

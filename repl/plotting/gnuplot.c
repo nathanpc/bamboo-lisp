@@ -119,6 +119,26 @@ void plot_equation(plot_t *plt, const TCHAR *equation) {
 	plt->pcount++;
 }
 
+void plot_data_l(plot_t *plt, size_t len, long double x[], long double y[]) {
+	size_t i;
+
+	// Build the plot/replot command.
+	gnuplot_cmd(plt, SPEC_STR _T(" '-' using 1:2 title \"") SPEC_STR
+		_T("\" with ") SPEC_STR,
+		(plt->pcount == 0) ? _T("plot") : _T("replot"), plt->sname, plt->pstyle);
+
+	// Send data points.
+	for (i = 0; i < len; i++) {
+		gnuplot_cmd(plt, _T("%Lg %Lg"), x[i], y[i]);
+	}
+
+	// Finish data points list.
+	gnuplot_cmd(plt, _T("e"));
+
+	// Increment the plot count.
+	plt->pcount++;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //                                                                            //
@@ -148,14 +168,30 @@ void gnuplot_init(plot_t *plt) {
 }
 
 /**
- * Sends a raw command to the GNUplot process.
+ * Variable argument version of gnuplot_cmd_cont.
+ *
+ * @param plt Plotting handle.
+ * @param cmd Command to be executed by a GNUplot instance (with printf format
+ *            specifiers).
+ * @param ap  Variables to be substituted in place of the format specifiers.
+ */
+void vgnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, va_list ap) {
+#ifdef DEBUG
+	_vftprintf(stdout, cmd, ap);
+#endif  // DEBUG
+	_vftprintf(plt->gplot, cmd, ap);
+}
+
+/**
+ * Sends a raw command to the GNUplot process without terminating the command
+ * line.
  *
  * @param plt Plotting handle.
  * @param cmd Command to be executed by a GNUplot instance (with printf format
  *            specifiers).
  * @param ... Variables to be substituted in place of the format specifiers.
  */
-void gnuplot_cmd(plot_t *plt, const TCHAR *cmd, ...) {
+void gnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, ...) {
 	va_list ap;
 
 	// Check if we have a valid handle.
@@ -167,17 +203,40 @@ void gnuplot_cmd(plot_t *plt, const TCHAR *cmd, ...) {
 
 	// Perform a printf command to GNUplot.
 	va_start(ap, cmd);
-#ifdef DEBUG
-	_vftprintf(stdout, cmd, ap);
-#endif  // DEBUG
-	_vftprintf(plt->gplot, cmd, ap);
+	vgnuplot_cmd_cont(plt, cmd, ap);
 	va_end(ap);
+}
 
+/**
+ * Makes sure a command has been sent to the GNUplot process.
+ *
+ * @param plt Plotting handle.
+ */
+void gnuplot_cmd_flush(plot_t *plt) {
 #ifdef DEBUG
 	_tprintf(LINEBREAK);
 #endif  // DEBUG
 
-	// Make sure we flush the command we've just sent.
 	_fputts(_T("\n"), plt->gplot);
 	fflush(plt->gplot);
+}
+
+/**
+ * Sends a raw command to the GNUplot process.
+ *
+ * @param plt Plotting handle.
+ * @param cmd Command to be executed by a GNUplot instance (with printf format
+ *            specifiers).
+ * @param ... Variables to be substituted in place of the format specifiers.
+ */
+void gnuplot_cmd(plot_t *plt, const TCHAR *cmd, ...) {
+	va_list ap;
+
+	// Perform a printf command to GNUplot.
+	va_start(ap, cmd);
+	vgnuplot_cmd_cont(plt, cmd, ap);
+	va_end(ap);
+
+	// Make sure we flush the command we've just sent.
+	gnuplot_cmd_flush(plt);
 }

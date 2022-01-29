@@ -26,6 +26,7 @@ bamboo_error_t builtin_plot_ylabel(atom_t args, atom_t *result);
 bamboo_error_t builtin_plot_type(atom_t args, atom_t *result);
 bamboo_error_t builtin_plot_name(atom_t args, atom_t *result);
 bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result);
+bamboo_error_t builtin_plot_data(atom_t args, atom_t *result);
 #endif  // USE_PLOTTING
 
 /**
@@ -156,6 +157,9 @@ bamboo_error_t repl_populate_builtins(env_t *env) {
 	IF_BAMBOO_ERROR(err)
 		return err;
 	err = bamboo_env_set_builtin(*env, _T("PLOT-EQN"), builtin_plot_equation);
+	IF_BAMBOO_ERROR(err)
+		return err;
+	err = bamboo_env_set_builtin(*env, _T("PLOT-DATA"), builtin_plot_data);
 	IF_BAMBOO_ERROR(err)
 		return err;
 #endif  // USE_PLOTTING
@@ -642,6 +646,119 @@ bamboo_error_t builtin_plot_equation(atom_t args, atom_t *result) {
 	// Get the plotting handle, the equation, and plot it.
 	plt = (plot_t *)plthnd.value.pointer;
 	plot_equation(plt, *eqn.value.str);
+
+	return BAMBOO_OK;
+}
+
+/**
+ * Plots a series of data points.
+ *
+ * (plot-data plthnd data)
+ *
+ * @param plthnd Plotting handle pointer.
+ * @param data   Data points to plot as a list of (X . Y) pairs.
+ */
+bamboo_error_t builtin_plot_data(atom_t args, atom_t *result) {
+	atom_t plthnd;
+	atom_t data;
+	plot_t *plt;
+	size_t len;
+	long double *x;
+	long double *y;
+	long double *px;
+	long double *py;
+
+	// Just in case...
+	*result = nil;
+
+	// Check if we don't have any arguments.
+	if (nilp(args)) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("A plotting handle must be supplied to this function"));
+	}
+
+	// Check if we have more than two arguments.
+	if (bamboo_list_count(args) != 2) {
+		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
+			_T("Only 2 arguments should be supplied to this function"));
+	}
+
+	// Check if we have a pointer argument.
+	plthnd = car(args);
+	if (plthnd.type != ATOM_TYPE_POINTER) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Plotting handle atom must be of type pointer"));
+	}
+
+	// Check if we have a list argument.
+	data = car(cdr(args));
+	if (data.type != ATOM_TYPE_PAIR) {
+		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+			_T("Data points atom must be of type list"));
+	}
+
+	// Allocate the data points array.
+	len = bamboo_list_count(data);
+	x = (long double *)malloc(len * sizeof(long double));
+	y = (long double *)malloc(len * sizeof(long double));
+
+	// Get the data points.
+	px = x;
+	py = y;
+	while (!nilp(data)) {
+		atom_t item = car(data);
+
+		// Check if we have a proper pair.
+		if (item.type != ATOM_TYPE_PAIR) {
+			free(x);
+			free(y);
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				_T("Data points must be a pair"));
+		}
+
+		// Get the X value.
+		switch (car(item).type) {
+		case ATOM_TYPE_INTEGER:
+			*px = (long double)car(item).value.integer;
+			break;
+		case ATOM_TYPE_FLOAT:
+			*px = car(item).value.dfloat;
+			break;
+		default:
+			free(x);
+			free(y);
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				_T("X data point must be a numeric atom"));
+		}
+
+		// Get the Y value.
+		switch (cdr(item).type) {
+		case ATOM_TYPE_INTEGER:
+			*py = (long double)cdr(item).value.integer;
+			break;
+		case ATOM_TYPE_FLOAT:
+			*py = cdr(item).value.dfloat;
+			break;
+		default:
+			free(x);
+			free(y);
+			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
+				_T("Y data point must be a numeric atom"));
+		}
+
+		// Next data point.
+		px++;
+		py++;
+		data = cdr(data);
+	}
+
+	// Get the plotting handle and plot the data.
+	plt = (plot_t *)plthnd.value.pointer;
+	plot_data_l(plt, len, x, y);
+
+	// Clean up our mess.
+	free(x);
+	free(y);
 
 	return BAMBOO_OK;
 }

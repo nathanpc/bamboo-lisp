@@ -32,6 +32,9 @@ typedef struct {
 #include "plot.h"
 
 // GNUplot specific things.
+void vgnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, va_list ap);
+void gnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, ...);
+void gnuplot_cmd_flush(plot_t *plt);
 void gnuplot_cmd(plot_t *plt, const TCHAR *cmd, ...);
 
 #ifdef __cplusplus
