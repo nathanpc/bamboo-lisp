@@ -2561,6 +2561,7 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 			// Integer argument.
 			if (first) {
 				// First iteration, so let's assign the first value first.
+				num.type = ATOM_TYPE_INTEGER;
 				num.value.integer = car(args).value.integer;
 				first = false;
 
@@ -2581,6 +2582,7 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 			// Float argument.
 			if (first) {
 				// First iteration, so let's assign the first value first.
+				num.type = ATOM_TYPE_FLOAT;
 				num.value.dfloat = car(args).value.dfloat;
 				first = false;
 
@@ -2633,6 +2635,7 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 			// Integer argument.
 			if (first) {
 				// First iteration, so let's assign the first value first.
+				num.type = ATOM_TYPE_INTEGER;
 				num.value.integer = car(args).value.integer;
 				first = false;
 
@@ -2653,6 +2656,7 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 			// Float argument.
 			if (first) {
 				// First iteration, so let's assign the first value first.
+				num.type = ATOM_TYPE_FLOAT;
 				num.value.dfloat = car(args).value.dfloat;
 				first = false;
 
