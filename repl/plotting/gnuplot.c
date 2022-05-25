@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
+#include <ctype.h>
 #ifdef _WIN32
 	#include "../windows/winutils.h"
 #endif  // _WIN32
@@ -57,7 +59,7 @@ void plot_destroy(plot_t *plt) {
 #else
 		if (pclose(plt->gplot) == -1) {
 #endif  // _WIN32
-			_ftprintf(stderr, _T("An error occured while trying to close ")
+			fprintf(stderr, _T("An error occured while trying to close ")
 					_T("GNUplot's process") LINEBREAK);
 		}
 	}
@@ -86,7 +88,7 @@ void plot_set_type(plot_t *plt, const TCHAR *type) {
 	*plt->pstyle = _T('\0');
 	for (i = 0; i < GNUPLOT_STYLE_MAX_LEN; i++) {
 		// Copy the character as lowercase.
-		plt->pstyle[i] = _totlower(type[i]);
+		plt->pstyle[i] = tolower(type[i]);
 
 		// Are we there yet?
 		if (type[i] == _T('\0')) {
@@ -100,7 +102,7 @@ void plot_set_type(plot_t *plt, const TCHAR *type) {
 
 void plot_set_series_name(plot_t *plt, const TCHAR *name) {
 	*plt->sname = _T('\0');
-	_tcsncat(plt->sname, name, GNUPLOT_TITLE_MAX_LEN);
+	strncat(plt->sname, name, GNUPLOT_TITLE_MAX_LEN);
 }
 
 void plot_clear(plot_t *plt) {
@@ -159,7 +161,7 @@ void gnuplot_init(plot_t *plt) {
 	plt->gplot = popen("gnuplot", "w");
 #endif  // _WIN32
 	if (plt->gplot == NULL) {
-		_ftprintf(stderr, _T("Couldn't open a new GNUplot process. Make sure ")
+		fprintf(stderr, _T("Couldn't open a new GNUplot process. Make sure ")
 				_T("gnuplot is in your system PATH") LINEBREAK);
 
 		plot_destroy(plt);
@@ -177,9 +179,9 @@ void gnuplot_init(plot_t *plt) {
  */
 void vgnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, va_list ap) {
 #ifdef DEBUG
-	_vftprintf(stdout, cmd, ap);
+	vfprintf(stdout, cmd, ap);
 #endif  // DEBUG
-	_vftprintf(plt->gplot, cmd, ap);
+	vfprintf(plt->gplot, cmd, ap);
 }
 
 /**
@@ -196,7 +198,7 @@ void gnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, ...) {
 
 	// Check if we have a valid handle.
 	if (plt == NULL) {
-		_ftprintf(stderr, _T("Trying to write a command to an invalid handle")
+		fprintf(stderr, _T("Trying to write a command to an invalid handle")
 			LINEBREAK);
 		return;
 	}
@@ -214,10 +216,10 @@ void gnuplot_cmd_cont(plot_t *plt, const TCHAR *cmd, ...) {
  */
 void gnuplot_cmd_flush(plot_t *plt) {
 #ifdef DEBUG
-	_tprintf(LINEBREAK);
+	printf(LINEBREAK);
 #endif  // DEBUG
 
-	_fputts(_T("\n"), plt->gplot);
+	fputs(_T("\n"), plt->gplot);
 	fflush(plt->gplot);
 }
 

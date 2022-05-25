@@ -67,7 +67,7 @@ void cleanup(void);
  * @param  argv Command-line arguments passed to the program.
  * @return      0 if everything went fine.
  */
-int _tmain(int argc, TCHAR *argv[]) {
+int main(int argc, char *argv[]) {
 	bamboo_error_t err;
 
 	// Setup some flags.
@@ -168,7 +168,7 @@ void repl(void) {
 #ifdef DEBUG
 			// Check out our tokens.
 			bamboo_print_tokens(end);
-			_tprintf(LINEBREAK);
+			printf(LINEBREAK);
 #endif  // DEBUG
 
 			// Parse the user's input.
@@ -177,10 +177,10 @@ void repl(void) {
 				uint8_t spaces;
 
 				// Show where the user was wrong.
-				_tprintf(_T("%s %s"), repl_input, LINEBREAK);
+				printf(_T("%s %s"), repl_input, LINEBREAK);
 				for (spaces = 0; spaces < (end - repl_input); spaces++)
-					_puttchar(_T(' '));
-				_tprintf(_T("^ "));
+					putchar(_T(' '));
+				printf(_T("^ "));
 
 				// Show the error message.
 				bamboo_print_error(err);
@@ -206,7 +206,7 @@ void repl(void) {
 
 		// Print the evaluated result.
 		bamboo_print_expr(result);
-		_tprintf(LINEBREAK);
+		printf(LINEBREAK);
 next:
 		;
 	}
@@ -249,13 +249,13 @@ void load_include(const TCHAR *fname, bool terminate) {
 
 		// Explain the real issue then...
 		bamboo_print_error(err);
-		_ftprintf(stderr, LINEBREAK);
+		fprintf(stderr, LINEBREAK);
 		goto quit;
 	}
 
 	// Print the evaluated result.
 	bamboo_print_expr(result);
-	_tprintf(LINEBREAK);
+	printf(LINEBREAK);
 
 	// Continue the program execution if we want to.
 	if (!terminate)
@@ -303,11 +303,11 @@ void parse_args(int argc, TCHAR **argv) {
 			usage(argv[0], EXIT_SUCCESS);
 			break;
 		case ':':
-			_tprintf(_T("Missing argument for ") SPEC_CHR LINEBREAK, optopt);
+			printf(_T("Missing argument for ") SPEC_CHR LINEBREAK, optopt);
 			usage(argv[0], EXIT_FAILURE);
 			break;
 		case _T('?'):
-			_tprintf(_T("Unknown option: ") SPEC_CHR LINEBREAK, optopt);
+			printf(_T("Unknown option: ") SPEC_CHR LINEBREAK, optopt);
 			// Fallthrough...
 		default:
 			usage(argv[0], EXIT_FAILURE);
@@ -323,18 +323,18 @@ void parse_args(int argc, TCHAR **argv) {
  * @param retval Return value to be used when exiting.
  */
 void usage(const TCHAR *pname, int retval) {
-	_tprintf(_T("Usage: ") SPEC_STR _T(" [[-rl] source]") LINEBREAK LINEBREAK,
+	printf(_T("Usage: ") SPEC_STR _T(" [[-rl] source]") LINEBREAK LINEBREAK,
 		pname);
 
-	_tprintf(_T("Options:") LINEBREAK);
-	_tprintf(_T("    -r <source>  Runs the source file and quits.")
+	printf(_T("Options:") LINEBREAK);
+	printf(_T("    -r <source>  Runs the source file and quits.")
 		LINEBREAK);
-	_tprintf(_T("    -l <source>  Loads the source file before the REPL.")
+	printf(_T("    -l <source>  Loads the source file before the REPL.")
 		LINEBREAK);
-	_tprintf(_T("    -h           Displays this message.")
+	printf(_T("    -h           Displays this message.")
 		LINEBREAK);
 
-	_tprintf(LINEBREAK _T("Author: Nathan Campos <nathan@innoveworkshop.com>")
+	printf(LINEBREAK _T("Author: Nathan Campos <nathan@innoveworkshop.com>")
 		LINEBREAK);
 
 	exit(retval);

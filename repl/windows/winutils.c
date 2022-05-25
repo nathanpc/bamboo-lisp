@@ -30,7 +30,7 @@ void DisplayError(LPCTSTR lpszHint) {
 
 	// Allocate and construct our display message.
 	lpszDisplay = (LPTSTR)LocalAlloc(LMEM_ZEROINIT,
-		(_tcslen(lpszMessage) + _tcslen(lpszHint) + 40) * sizeof(TCHAR));
+		(strlen(lpszMessage) + strlen(lpszHint) + 40) * sizeof(TCHAR));
 	StringCchPrintf(lpszDisplay, LocalSize((LPVOID)lpszDisplay) / sizeof(TCHAR),
 		_T("%s failed with error %d: %s"),
 		lpszHint, dwErrorCode, lpszMessage);

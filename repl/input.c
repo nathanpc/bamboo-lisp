@@ -89,10 +89,10 @@ int repl_readline(TCHAR *buf, size_t len) {
 	buf[len] = _T('\0');
 
 	// Get user input.
-	_tprintf(_T("> "));
+	printf(_T("> "));
 	for (i = 0; i < len; i++) {
 		// Get character from STDIN.
-		TINT c = _gettchar();
+		TINT c = getchar();
 
 		switch (c) {
 		case _T('\"'):
@@ -118,7 +118,7 @@ int repl_readline(TCHAR *buf, size_t len) {
 
 			// Add some indentation into the mix.
 			for (paren_index = 0; paren_index <= openparens; paren_index++)
-				_tprintf(_T("  "));
+				printf(_T("  "));
 			break;
 		}
 

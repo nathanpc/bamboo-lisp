@@ -15,122 +15,13 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-// Unicode support.
-#ifdef _WIN32
-	#include <windows.h>
-	#include <tchar.h>
-
-	// Make Microsoft's compiler happy about their horrible excuse of an
-	// implementations.
-	#ifdef _MSC_VER
-		#ifdef UNICODE
-			#define _tcsdup  _wcsdup
-			#ifndef _tcstoll
-				#define _tcstoll _tcstoi64
-			#endif  // _tcstoll
-		#else
-			#define _tcsdup  _strdup
-		#endif  // UNICODE
-	#endif  // _MSC_VER
-
-	// Some compilers (*cough* Open Watcom *cough*) forgot to implement _t
-	// variants of strtoll and strtold.
-	#ifdef __WATCOMC__
-		#ifdef UNICODE
-			#define _tcstoll wcstoll
-			#define _tcstold wcstold
-		#else
-			#define _tcstoll strtoll
-			#define _tcstold strtold
-		#endif  // UNICODE
-	#endif  // __WATCOMC__
-#else
-	#ifdef UNICODE
-		#include <wchar.h>
-		#include <wctype.h>
-
-		// Very basics.
-		typedef wchar_t TCHAR;
-		#define _T(x)   L ## x
-		#define _tmain  main // wmain
-		#define __targv __wargv
-
-		// Standard I/O.
-		#define	_tprintf   wprintf
-		#define	_ftprintf  fwprintf
-		#define _stprintf  swprintf
-		#define _sntprintf snwprintf
-		#define _vftprintf vfwprintf
-		#define _puttchar  putwchar
-		#define _puttc     putwc
-		#define _fputts    fputws
-		#define _gettchar  getwchar
-
-		// String operations.
-		#define _tcscmp   wcscmp
-		#define _tcsncmp  wcsncmp
-		#define _tcsspn   wcsspn
-		#define _tcschr   wcschr
-		#define _tcsstr   wcsstr
-		#define _tcscat   wcscat
-		#define _tcsncat  wcsncat
-		#define _tcscspn  wcscspn
-		#define _tcsncpy  wcsncpy
-		#define _tcsdup   wcsdup
-		#define _tcslen   wcslen
-		#define _totlower towlower
-		#define _totupper towupper
-
-		// String conversions.
-		#define _tcstoll wcstoll
-		#define _tcstold wcstold
-	#else
-		// Very basics.
-		typedef char   TCHAR;
-		#define _T(x)  x
-		#define _tmain main
-		#define __targv __argv
-
-		// Standard I/O.
-		#define	_tprintf   printf
-		#define	_ftprintf  fprintf
-		#define _stprintf  sprintf
-		#define _sntprintf snprintf
-		#define _vftprintf vfprintf
-		#define _puttchar  putchar
-		#define _puttc     putc
-		#define _fputts    fputs
-		#define _gettchar  getchar
-
-		// String operations.
-		#define _tcscmp   strcmp
-		#define _tcsncmp  strncmp
-		#define _tcsspn   strspn
-		#define _tcschr   strchr
-		#define _tcsstr   strstr
-		#define _tcscat   strcat
-		#define _tcsncat  strncat
-		#define _tcscspn  strcspn
-		#define _tcsncpy  strncpy
-		#define _tcsdup   strdup
-		#define _tcslen   strlen
-		#define _totlower tolower
-		#define _totupper toupper
-
-		// String conversions.
-		#define _tcstoll strtoll
-		#define _tcstold strtold
-	#endif  // UNICODE
-#endif  // _WIN32
+// Very basics.
+typedef char   TCHAR;
+#define _T(x)  x
 
 // Make sure we use the right format specifier for printf and wprintf.
-#ifdef UNICODE
-	#define SPEC_CHR _T("%lc")
-	#define SPEC_STR _T("%ls")
-#else
-	#define SPEC_CHR _T("%c")
-	#define SPEC_STR _T("%s")
-#endif  // UNICODE
+#define SPEC_CHR _T("%c")
+#define SPEC_STR _T("%s")
 
 // Global definitions.
 #ifndef LINEBREAK

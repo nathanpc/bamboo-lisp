@@ -63,14 +63,14 @@ bool file_ext_match(const TCHAR *fpath, const TCHAR *ext) {
 
 	// Go through the file path backwards trying to find a dot.
 	fext = fpath;
-	for (i = (_tcslen(fpath) - 1); i >= 0; i--) {
+	for (i = (strlen(fpath) - 1); i >= 0; i--) {
 		if (fpath[i] == _T('.')) {
 			fext = fpath + i + 1;
 			break;
 		}
 	}
 
-	return _tcscmp(fext, ext) == 0;
+	return strcmp(fext, ext) == 0;
 }
 
 /**
@@ -84,7 +84,7 @@ size_t cleanup_path(TCHAR *path) {
 	TCHAR *back;
 
 	// Go through string searching for duplicate slashes.
-	while ((pos = _tcsstr(path, _T("//"))) != NULL) {
+	while ((pos = strstr(path, _T("//"))) != NULL) {
 		// Append the rest of the string skipping one character.
 		for (back = pos++; *back != _T('\0'); back++) {
 			*back = *pos++;
@@ -93,7 +93,7 @@ size_t cleanup_path(TCHAR *path) {
 
 #ifdef _WIN32
 	// Fix strings that have a mix of Windows and UNIX slashes together.
-	while ((pos = _tcsstr(path, _T("\\/"))) != NULL) {
+	while ((pos = strstr(path, _T("\\/"))) != NULL) {
 		// Append the rest of the string skipping one character.
 		for (back = pos++; *back != _T('\0'); back++) {
 			*back = *pos++;
@@ -108,7 +108,7 @@ size_t cleanup_path(TCHAR *path) {
 	}
 #endif  // _WIN32
 
-	return _tcslen(path);
+	return strlen(path);
 }
 
 /**
@@ -124,13 +124,13 @@ TCHAR* extcat(const TCHAR *fpath, const TCHAR *ext) {
 	TCHAR *final_path;
 
 	// Allocate the final path string.
-	final_path = (TCHAR *)malloc((_tcslen(fpath) + _tcslen(ext) + 2) *
+	final_path = (TCHAR *)malloc((strlen(fpath) + strlen(ext) + 2) *
 		sizeof(TCHAR));
 	if (final_path == NULL)
 		return NULL;
 
 	// Concatenate things.
-	_stprintf(final_path, SPEC_STR _T(".") SPEC_STR, fpath, ext);
+	sprintf(final_path, SPEC_STR _T(".") SPEC_STR, fpath, ext);
 
 	return final_path;
 }

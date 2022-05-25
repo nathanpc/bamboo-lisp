@@ -48,7 +48,7 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 	*result = nil;
 
 	// Just remind the user of what's happening.
-	_tprintf(_T("Loading ") SPEC_STR LINEBREAK, fname);
+	printf(_T("Loading ") SPEC_STR LINEBREAK, fname);
 
 	// Get the file contents.
 	contents = slurp_file(fname);
@@ -63,7 +63,7 @@ bamboo_error_t load_source(env_t *env, const TCHAR *fname, atom_t *result) {
 #ifdef DEBUG
 		// Check out our tokens.
 		bamboo_print_tokens(end);
-		_tprintf(LINEBREAK);
+		printf(LINEBREAK);
 #endif  // DEBUG
 
 		// Parse the expression.
@@ -183,7 +183,7 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 	// Check if we don't have any arguments.
 	if (nilp(args)) {
 		result->value.integer = 0;
-		_tprintf(_T("Bye!") LINEBREAK);
+		printf(_T("Bye!") LINEBREAK);
 		
 		return (bamboo_error_t)BAMBOO_REPL_QUIT;
 	}
@@ -201,7 +201,7 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 
 	// Exit with the specified return value.
 	*result = retval;
-	_tprintf(_T("Bye!") LINEBREAK);
+	printf(_T("Bye!") LINEBREAK);
 	return (bamboo_error_t)BAMBOO_REPL_QUIT;
 }
 

@@ -25,7 +25,7 @@
 #define IF_SPECIAL_COND(err) IF_BAMBOO_SPECIAL_COND(err)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
 
-// Make Visual C++ 6.0 not complain about passing NULL to _sntprintf.
+// Make Visual C++ 6.0 not complain about passing NULL to snprintf.
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 	#define I64_MAX_DIGITS        128
 	#define LONGDOUBLE_MAX_DIGITS 128
@@ -43,13 +43,6 @@
 #ifndef LLONG_MIN
 	#define LLONG_MIN _I64_MIN
 #endif  // LLONG_MIN
-
-// Unix variants never implemented snwprintf. *facepalm*
-#if defined(UNICODE) && !defined(snwprintf) && !defined(_WIN32)
-	#define IMPLEMENT_SNWPRINTF
-	#define SNWPRINTF_MAX_LEN 1024  // Ugh.
-	int snwprintf(wchar_t *buf, size_t len, const wchar_t *format, ...);
-#endif  // snwprintf
 
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
@@ -394,7 +387,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
 	tmp = bamboo_symbol_table;
 	while (!nilp(tmp)) {
 		atom = car(tmp);
-		if (_tcscmp(*atom.value.symbol, name) == 0)
+		if (strcmp(*atom.value.symbol, name) == 0)
 			return atom;
 
 		tmp = cdr(tmp);
@@ -411,7 +404,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
 	alloc->type = ALLOCATION_TYPE_STRING;
-	alloc->str = _tcsdup(name);
+	alloc->str = strdup(name);
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -461,7 +454,7 @@ atom_t bamboo_string(const TCHAR *str) {
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
 	alloc->type = ALLOCATION_TYPE_STRING;
-	alloc->str = _tcsdup(str);
+	alloc->str = strdup(str);
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -808,7 +801,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	const TCHAR *prefix = _T("()\'`\";");
 
 	// Skip any leading whitespace.
-	tmp += _tcsspn(tmp, wspace);
+	tmp += strspn(tmp, wspace);
 
 	// Check if this was an empty line.
 	if (tmp[0] == _T('\0')) {
@@ -822,7 +815,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	token->start = tmp;
 
 	// Check if the token is just a parenthesis or unquotation.
-	if (_tcschr(prefix, tmp[0]) != NULL) {
+	if (strchr(prefix, tmp[0]) != NULL) {
 		token->end = tmp + 1;
 		return BAMBOO_OK;
 	} else if (tmp[0] == _T(',')) {
@@ -833,7 +826,7 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	}
 
 	// Find the end of the token.
-	token->end = tmp + _tcscspn(tmp, delim);
+	token->end = tmp + strcspn(tmp, delim);
 	return BAMBOO_OK;
 }
 
@@ -914,7 +907,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 	TCHAR *buf;
 	TCHAR *buftmp;
 	const TCHAR *tmp;
-#ifndef _tcstold
+#ifndef strtold
 	int cret = 0;
 #endif
 
@@ -951,7 +944,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 			buf = NULL;
 		}
 #else
-		integer = _tcstoll(token->start, &buf, 0);
+		integer = strtoll(token->start, &buf, 0);
 #endif  // _MSC_VER
 		if (buf == token->end) {
 #ifndef _WIN32_WCE
@@ -980,16 +973,16 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 		}
 
 		// Try to parse an float.
-#ifndef _tcstold
-		cret = _stscanf(token->start, "%lg", &dfloat);
+#ifndef strtold
+		cret = sscanf(token->start, "%lg", &dfloat);
 		if ((cret != 0) && (cret != EOF)) {
 			buf = token->end;
 		} else {
 			buf = NULL;
 		}
 #else
-		dfloat = _tcstold(token->start, &buf);
-#endif  // _tcstold
+		dfloat = strtold(token->start, &buf);
+#endif  // strtold
 		if (buf == token->end) {
 #ifndef _WIN32_WCE
 			// Check for overflows/underflows.
@@ -1032,11 +1025,11 @@ symbolparser:
 	buftmp = buf;
 	tmp = token->start;
 	while (tmp != token->end)
-		*buftmp++ = _totupper(*tmp++);
+		*buftmp++ = toupper(*tmp++);
 	*buftmp = _T('\0');
 
 	// Check if we are dealing with a NIL symbol.
-	if (_tcscmp(buf, _T("NIL")) == 0) {
+	if (strcmp(buf, _T("NIL")) == 0) {
 		*atom = nil;
 	} else {
 		// Looks like a regular symbol.
@@ -1328,7 +1321,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Check if it's a special form to be evaluated.
 			if (op.type == ATOM_TYPE_SYMBOL) {
 				// Check which special form we need to evaluate.
-				if (_tcscmp(*op.value.symbol, _T("QUOTE")) == 0) {
+				if (strcmp(*op.value.symbol, _T("QUOTE")) == 0) {
 					// Check if we have the single required arguments.
 					if (bamboo_list_count(args) != 1) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1337,7 +1330,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Return the arguments without evaluating.
 					*result = car(args);
-				} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
+				} else if (strcmp(*op.value.symbol, _T("IF")) == 0) {
 					// Check if we have the right number of arguments.
 					if (bamboo_list_count(args) != 3) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1350,7 +1343,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					expr = car(args);
 
 					continue;
-				} else if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
+				} else if (strcmp(*op.value.symbol, _T("DEFINE")) == 0) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
@@ -1391,7 +1384,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
 							_T("Argument 0 should be of type symbol or pair"));
 					}
-				} else if (_tcscmp(*op.value.symbol, _T("LAMBDA")) == 0) {
+				} else if (strcmp(*op.value.symbol, _T("LAMBDA")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1400,7 +1393,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 
 					// Make the closure.
 					err = bamboo_closure(env, car(args), cdr(args), result);
-				} else if (_tcscmp(*op.value.symbol, _T("DEFINE-MACRO")) == 0) {
+				} else if (strcmp(*op.value.symbol, _T("DEFINE-MACRO")) == 0) {
 					atom_t name;
 					atom_t macro;
 
@@ -1435,7 +1428,7 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						*result = name;
 						(void)bamboo_env_set(env, name, macro);
 					}
-				} else if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
+				} else if (strcmp(*op.value.symbol, _T("APPLY")) == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
@@ -1636,7 +1629,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 
 	// Handle the apply special form.
 	if (op.type == ATOM_TYPE_SYMBOL) {
-		if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
+		if (strcmp(*op.value.symbol, _T("APPLY")) == 0) {
 			// Replace the current frame.
 			*stack = car(*stack);
 			*stack = new_stack_frame(*stack, *env, nil);
@@ -1723,7 +1716,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 		}
 	} else if (op.type == ATOM_TYPE_SYMBOL) {
 		// Finished working on an special form.
-		if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
+		if (strcmp(*op.value.symbol, _T("DEFINE")) == 0) {
 			atom_t symbol;
 
 			symbol = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
@@ -1732,7 +1725,7 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 			*expr = cons(bamboo_symbol(_T("QUOTE")), cons(symbol, nil));
 
 			return BAMBOO_OK;
-		} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
+		} else if (strcmp(*op.value.symbol, _T("IF")) == 0) {
 			args = bamboo_list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			// Choose which path to go for an if statement.
@@ -1828,7 +1821,7 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 		TCHAR msg[ERROR_MSG_STR_LEN + 1];
 
 		// Build the error string.
-		_sntprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '") SPEC_STR _T("' not ")
+		snprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '") SPEC_STR _T("' not ")
 			_T("found in any of the environments"), *symbol.value.symbol);
 		return bamboo_error(BAMBOO_ERROR_UNBOUND, msg);
 	}
@@ -2007,18 +2000,18 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 	switch (atom.type) {
 	case ATOM_TYPE_NIL:
 		// nil
-		*buf = _tcsdup(_T("nil"));
+		*buf = strdup(_T("nil"));
 		break;
 	case ATOM_TYPE_SYMBOL:
 		// Symbol
-		*buf = _tcsdup(*atom.value.symbol);
+		*buf = strdup(*atom.value.symbol);
 		break;
 	case ATOM_TYPE_INTEGER:
 		// Integer
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = I64_MAX_DIGITS;
 #else
-		buflen = _sntprintf(NULL, 0, _T("%lld"), atom.value.integer);
+		buflen = snprintf(NULL, 0, _T("%lld"), atom.value.integer);
 #endif  // _MSC_VER
 
 		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
@@ -2028,9 +2021,9 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 		}
 
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
-		_sntprintf(*buf, buflen + 1, _T("%I64d"), atom.value.integer);
+		snprintf(*buf, buflen + 1, _T("%I64d"), atom.value.integer);
 #else
-		_sntprintf(*buf, buflen + 1, _T("%lld"), atom.value.integer);
+		snprintf(*buf, buflen + 1, _T("%lld"), atom.value.integer);
 #endif  // _MSC_VER
 		break;
 	case ATOM_TYPE_FLOAT:
@@ -2038,7 +2031,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = LONGDOUBLE_MAX_DIGITS;
 #else
-		buflen = _sntprintf(NULL, 0, _T("%Lg"), atom.value.dfloat);
+		buflen = snprintf(NULL, 0, _T("%Lg"), atom.value.dfloat);
 #endif  // _MSC_VER
 
 		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
@@ -2047,7 +2040,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				_T("string to represent float atom"));
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("%Lg"), atom.value.dfloat);
+		snprintf(*buf, buflen + 1, _T("%Lg"), atom.value.dfloat);
 		break;
 	case ATOM_TYPE_BOOLEAN:
 		// Boolean
@@ -2065,14 +2058,14 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 		break;
 	case ATOM_TYPE_STRING:
 		// String
-		buflen = _tcslen(*atom.value.str) + 2;
+		buflen = strlen(*atom.value.str) + 2;
 		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
 		if (*buf == NULL) {
 			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 				_T("string to represent string atom"));
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("\"") SPEC_STR _T("\""),
+		snprintf(*buf, buflen + 1, _T("\"") SPEC_STR _T("\""),
 			*atom.value.str);
 		break;
 	case ATOM_TYPE_PAIR:
@@ -2088,11 +2081,11 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 
 		// Grab the first item of the pair and append it to the string.
 		bamboo_expr_str(&tmp, car(atom));
-		buflen += _tcslen(tmp);
+		buflen += strlen(tmp);
 		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 		if (*buf == NULL)
 			goto err_alloc_pair_str;
-		_tcscat(*buf, tmp);
+		strcat(*buf, tmp);
 		free(tmp);
 
 		// Iterate over the right-hand side of the pair since it may be a list.
@@ -2102,13 +2095,13 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 			if (atom.type == ATOM_TYPE_PAIR) {
 				bamboo_expr_str(&tmp, car(atom));
 
-				buflen += _tcslen(tmp) + 1;
+				buflen += strlen(tmp) + 1;
 				*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 				if (*buf == NULL)
 					goto err_alloc_pair_str;
 
-				_tcscat(*buf, _T(" "));
-				_tcscat(*buf, tmp);
+				strcat(*buf, _T(" "));
+				strcat(*buf, tmp);
 
 				free(tmp);
 				atom = cdr(atom);
@@ -2116,13 +2109,13 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				// It was just a simple pair.
 				bamboo_expr_str(&tmp, atom);
 
-				buflen += _tcslen(tmp) + 3;
+				buflen += strlen(tmp) + 3;
 				*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 				if (*buf == NULL)
 					goto err_alloc_pair_str;
 
-				_tcscat(*buf, _T(" . "));
-				_tcscat(*buf, tmp);
+				strcat(*buf, _T(" . "));
+				strcat(*buf, tmp);
 
 				free(tmp);
 				break;
@@ -2130,7 +2123,7 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 		}
 
 		// Append the last paren and terminate the string.
-		_tcscat(*buf, _T(")"));
+		strcat(*buf, _T(")"));
 		break;
 err_alloc_pair_str:
 		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
@@ -2141,7 +2134,7 @@ err_alloc_pair_str:
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = 32;
 #else
-		buflen = _sntprintf(NULL, 0, _T("#<BUILTIN:%p>"), atom.value.builtin);
+		buflen = snprintf(NULL, 0, _T("#<BUILTIN:%p>"), atom.value.builtin);
 #endif  // _MSC_VER
 
 		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
@@ -2150,7 +2143,7 @@ err_alloc_pair_str:
 				_T("string to represent built-in function atom"));
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("#<BUILTIN:%p>"), atom.value.builtin);
+		snprintf(*buf, buflen + 1, _T("#<BUILTIN:%p>"), atom.value.builtin);
 		break;
 	case ATOM_TYPE_CLOSURE:
 		// Closure
@@ -2161,33 +2154,33 @@ err_alloc_pair_str:
 		if (*buf == NULL)
 			goto err_alloc_closure_str;
 		(*buf)[0] = _T('\0');
-		_tcscat(*buf, _T("#<FUNCTION:"));
+		strcat(*buf, _T("#<FUNCTION:"));
 
 		// Do we have arguments?
 		if (!nilp(car(cdr(atom)))) {
 			bamboo_expr_str(&tmp, car(cdr(atom)));
 
-			buflen += _tcslen(tmp);
+			buflen += strlen(tmp);
 			*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 			if (*buf == NULL)
 				goto err_alloc_closure_str;
 
-			_tcscat(*buf, tmp);
+			strcat(*buf, tmp);
 			free(tmp);
 		}
 
 		// Append the closure body.
-		_tcscat(*buf, _T(" "));
+		strcat(*buf, _T(" "));
 		bamboo_expr_str(&tmp, cdr(cdr(atom)));
-		buflen += _tcslen(tmp);
+		buflen += strlen(tmp);
 		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 		if (*buf == NULL)
 			goto err_alloc_closure_str;
-		_tcscat(*buf, tmp);
+		strcat(*buf, tmp);
 		free(tmp);
 
 		// Finalize the string.
-		_tcscat(*buf, _T(">"));
+		strcat(*buf, _T(">"));
 		break;
 err_alloc_closure_str:
 		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
@@ -2202,33 +2195,33 @@ err_alloc_closure_str:
 		if (*buf == NULL)
 			goto err_alloc_macro_str;
 		(*buf)[0] = _T('\0');
-		_tcscat(*buf, _T("#<MACRO:"));
+		strcat(*buf, _T("#<MACRO:"));
 
 		// Do we have arguments?
 		if (!nilp(car(cdr(atom)))) {
 			bamboo_expr_str(&tmp, car(cdr(atom)));
 
-			buflen += _tcslen(tmp);
+			buflen += strlen(tmp);
 			*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 			if (*buf == NULL)
 				goto err_alloc_macro_str;
 
-			_tcscat(*buf, tmp);
+			strcat(*buf, tmp);
 			free(tmp);
 		}
 
 		// Append the macro body.
-		_tcscat(*buf, _T(" "));
+		strcat(*buf, _T(" "));
 		bamboo_expr_str(&tmp, cdr(cdr(atom)));
-		buflen += _tcslen(tmp);
+		buflen += strlen(tmp);
 		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
 		if (*buf == NULL)
 			goto err_alloc_macro_str;
-		_tcscat(*buf, tmp);
+		strcat(*buf, tmp);
 		free(tmp);
 
 		// Finalize the string.
-		_tcscat(*buf, _T(">"));
+		strcat(*buf, _T(">"));
 		break;
 err_alloc_macro_str:
 		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
@@ -2239,7 +2232,7 @@ err_alloc_macro_str:
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = 32;
 #else
-		buflen = _sntprintf(NULL, 0, _T("#<POINTER:%p>"), atom.value.pointer);
+		buflen = snprintf(NULL, 0, _T("#<POINTER:%p>"), atom.value.pointer);
 #endif  // _MSC_VER
 
 		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
@@ -2248,11 +2241,11 @@ err_alloc_macro_str:
 				_T("string to represent pointer atom"));
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("#<POINTER:%p>"), atom.value.pointer);
+		snprintf(*buf, buflen + 1, _T("#<POINTER:%p>"), atom.value.pointer);
 		break;
 	default:
 		// Unknown
-		*buf = _tcsdup(_T("Unknown type. Don't know how to display this"));
+		*buf = strdup(_T("Unknown type. Don't know how to display this"));
 	}
 }
 
@@ -2284,40 +2277,40 @@ void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err) {
 	// Get the error type string.
 	switch (err) {
 	case BAMBOO_OK:
-		*buf = _tcsdup(_T("OK"));
+		*buf = strdup(_T("OK"));
 		break;
 	case BAMBOO_PAREN_END:
-		*buf = _tcsdup(_T("PARENTHESIS ENDED"));
+		*buf = strdup(_T("PARENTHESIS ENDED"));
 		break;
 	case BAMBOO_ERROR_SYNTAX:
-		*buf = _tcsdup(_T("SYNTAX ERROR"));
+		*buf = strdup(_T("SYNTAX ERROR"));
 		break;
 	case BAMBOO_ERROR_EMPTY:
-		*buf = _tcsdup(_T("EMPTY STATEMENT"));
+		*buf = strdup(_T("EMPTY STATEMENT"));
 		break;
 	case BAMBOO_ERROR_UNBOUND:
-		*buf = _tcsdup(_T("UNBOUND SYMBOL ERROR"));
+		*buf = strdup(_T("UNBOUND SYMBOL ERROR"));
 		break;
 	case BAMBOO_ERROR_ARGUMENTS:
-		*buf = _tcsdup(_T("INCORRECT ARGUMENT ERROR"));
+		*buf = strdup(_T("INCORRECT ARGUMENT ERROR"));
 		break;
 	case BAMBOO_ERROR_WRONG_TYPE:
-		*buf = _tcsdup(_T("WRONG TYPE ERROR"));
+		*buf = strdup(_T("WRONG TYPE ERROR"));
 		break;
 	case BAMBOO_ERROR_NUM_OVERFLOW:
-		*buf = _tcsdup(_T("NUMERIC OVERFLOW ERROR"));
+		*buf = strdup(_T("NUMERIC OVERFLOW ERROR"));
 		break;
 	case BAMBOO_ERROR_NUM_UNDERFLOW:
-		*buf = _tcsdup(_T("NUMERIC UNDERFLOW ERROR"));
+		*buf = strdup(_T("NUMERIC UNDERFLOW ERROR"));
 		break;
 	case BAMBOO_ERROR_ALLOCATION:
-		*buf = _tcsdup(_T("MEMORY ALLOCATION ERROR"));
+		*buf = strdup(_T("MEMORY ALLOCATION ERROR"));
 		break;
 	case BAMBOO_ERROR_UNKNOWN:
-		*buf = _tcsdup(_T("UNKNOWN ERROR"));
+		*buf = strdup(_T("UNKNOWN ERROR"));
 		break;
 	default:
-		*buf = _tcsdup(_T("I have no clue why you're here, because you ")
+		*buf = strdup(_T("I have no clue why you're here, because you ")
 			_T("shouldn't"));
 		break;
 	}
@@ -2374,7 +2367,7 @@ void bamboo_print_tokens(const TCHAR *str) {
 		buf[i] = _T('\0');
 
 		// Print the token and free the string.
-		_tprintf(_T("'") SPEC_STR _T("' "), buf);
+		printf(_T("'") SPEC_STR _T("' "), buf);
 		free(buf);
 	}
 }
@@ -2400,7 +2393,7 @@ const TCHAR* bamboo_error_detail(void) {
  * @param msg Error message to be set.
  */
 void set_error_msg(const TCHAR *msg) {
-	_tcsncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
+	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
 
 /**
@@ -3218,7 +3211,7 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 		*result = bamboo_boolean(*a.value.symbol == *b.value.symbol);
 		break;
 	case ATOM_TYPE_STRING:
-		*result = bamboo_boolean(_tcscmp(*a.value.str, *b.value.str) == 0);
+		*result = bamboo_boolean(strcmp(*a.value.str, *b.value.str) == 0);
 		break;
 	case ATOM_TYPE_BOOLEAN:
 		*result = bamboo_boolean(a.value.boolean == b.value.boolean);
@@ -3402,7 +3395,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 		case ATOM_TYPE_STRING:
 			// Get the argument string length.
 			tmpbuf = *car(args).value.str;
-			tmplen = _tcslen(tmpbuf);
+			tmplen = strlen(tmpbuf);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
@@ -3414,13 +3407,13 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			break;
 		case ATOM_TYPE_NIL:
 			break;
 		case ATOM_TYPE_SYMBOL:
 			// Get the argument string length.
-			tmplen = _tcslen(*car(args).value.symbol);
+			tmplen = strlen(*car(args).value.symbol);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
@@ -3432,14 +3425,14 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings.
-			_tcscat(buf, *car(args).value.symbol);
+			strcat(buf, *car(args).value.symbol);
 			break;
 		case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			tmplen = I64_MAX_DIGITS;
 #else
-			tmplen = _sntprintf(NULL, 0, _T("%lld"), car(args).value.integer);
+			tmplen = snprintf(NULL, 0, _T("%lld"), car(args).value.integer);
 #endif  // _MSC_VER
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
@@ -3448,9 +3441,9 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 					_T("string to display integer atom"));
 			}
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
-			_sntprintf(tmpbuf, tmplen + 1, _T("%I64d"), car(args).value.integer);
+			snprintf(tmpbuf, tmplen + 1, _T("%I64d"), car(args).value.integer);
 #else
-			_sntprintf(tmpbuf, tmplen + 1, _T("%lld"), car(args).value.integer);
+			snprintf(tmpbuf, tmplen + 1, _T("%lld"), car(args).value.integer);
 #endif  // _MSC_VER
 
 			// Reallocate the string to fit the new concatenated string.
@@ -3463,7 +3456,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		case ATOM_TYPE_FLOAT:
@@ -3471,7 +3464,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			tmplen = LONGDOUBLE_MAX_DIGITS;
 #else
-			tmplen = _sntprintf(NULL, 0, _T("%Lg"), car(args).value.dfloat);
+			tmplen = snprintf(NULL, 0, _T("%Lg"), car(args).value.dfloat);
 #endif  // _MSC_VER
 			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
 			if (tmpbuf == NULL) {
@@ -3479,7 +3472,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
 					_T("string to display float atom"));
 			}
-			_sntprintf(tmpbuf, tmplen + 1, _T("%Lg"), car(args).value.dfloat);
+			snprintf(tmpbuf, tmplen + 1, _T("%Lg"), car(args).value.dfloat);
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
@@ -3491,16 +3484,16 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		case ATOM_TYPE_BOOLEAN:
 			// Determine the string needed to concatenate depending on value.
 			if (car(args).value.boolean) {
-				tmpbuf = _tcsdup(_T("TRUE"));
+				tmpbuf = strdup(_T("TRUE"));
 				tmplen = 4;
 			} else {
-				tmpbuf = _tcsdup(_T("FALSE"));
+				tmpbuf = strdup(_T("FALSE"));
 				tmplen = 5;
 			}
 
@@ -3515,7 +3508,7 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		default:
@@ -3573,7 +3566,7 @@ bamboo_error_t builtin_display_env(atom_t args, atom_t *result) {
 			goto next_item;
 
 		// Print out the symbol name and its value.
-		_tprintf(SPEC_STR _T("\t\t"), *car(item).value.symbol);
+		printf(SPEC_STR _T("\t\t"), *car(item).value.symbol);
 		bamboo_print_expr(cdr(item));
 		putstr(LINEBREAK);
 
@@ -3616,7 +3609,7 @@ void putstr(const TCHAR *str) {
 	const TCHAR *tmp = str;
 
 	while (*tmp)
-		_puttchar(*tmp++);
+		putchar(*tmp++);
 }
 
 /**
@@ -3628,7 +3621,7 @@ void putstrerr(const TCHAR *str) {
 	const TCHAR *tmp = str;
 
 	while (*tmp)
-		_puttc(*tmp++, stderr);
+		putc(*tmp++, stderr);
 }
 
 /**

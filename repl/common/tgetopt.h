@@ -165,10 +165,10 @@ extern "C" {
 
 	static void
 		_vwarnx(const TCHAR *fmt, va_list ap) {
-		(void)_ftprintf(stderr, _T("%s: "), __progname);
+		(void)fprintf(stderr, _T("%s: "), __progname);
 		if (fmt != NULL)
-			(void)_vftprintf(stderr, fmt, ap);
-		(void)_ftprintf(stderr, _T("\n"));
+			(void)vfprintf(stderr, fmt, ap);
+		(void)fprintf(stderr, _T("\n"));
 	}
 
 	static void
@@ -325,20 +325,20 @@ extern "C" {
 
 		optind++;
 
-		if ((has_equal = _tcschr(current_argv, _T('='))) != NULL) {
+		if ((has_equal = strchr(current_argv, _T('='))) != NULL) {
 			/* argument found (--option=arg) */
 			current_argv_len = has_equal - current_argv;
 			has_equal++;
 		} else
-			current_argv_len = _tcslen(current_argv);
+			current_argv_len = strlen(current_argv);
 
 		for (i = 0; long_options[i].name; i++) {
 			/* find matching long option */
-			if (_tcsncmp(current_argv, long_options[i].name,
+			if (strncmp(current_argv, long_options[i].name,
 				current_argv_len))
 				continue;
 
-			if (_tcslen(long_options[i].name) == current_argv_len) {
+			if (strlen(long_options[i].name) == current_argv_len) {
 				/* exact match */
 				match = i;
 				ambiguous = 0;
@@ -491,7 +491,7 @@ start:
 				return (-1);
 			}
 			if (*(place = nargv[optind]) != _T('-') ||
-				(place[1] == _T('\0') && _tcschr(options, _T('-')) == NULL)) {
+				(place[1] == _T('\0') && strchr(options, _T('-')) == NULL)) {
 				place = EMSG;		/* found non-option */
 				if (flags & FLAG_ALLARGS) {
 					/*
@@ -556,7 +556,7 @@ start:
 			short_too = 0;
 			if (*place == _T('-'))
 				place++;		/* --foo long option */
-			else if (*place != _T(':') && _tcschr(options, *place) != NULL)
+			else if (*place != _T(':') && strchr(options, *place) != NULL)
 				short_too = 1;		/* could be short option too */
 
 			optchar = parse_long_options(nargv, options, long_options,
@@ -569,7 +569,7 @@ start:
 
 		if ((optchar = (int)*place++) == (int)_T(':') ||
 			(optchar == (int)_T('-') && *place != _T('\0')) ||
-			(oli = (TCHAR *)_tcschr(options, optchar)) == NULL) {
+			(oli = (TCHAR *)strchr(options, optchar)) == NULL) {
 			/*
 			 * If the user specified "-" and  '-' isn't listed in
 			 * options, return -1 (non-option) as per POSIX.
