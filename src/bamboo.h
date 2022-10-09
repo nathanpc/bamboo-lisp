@@ -15,6 +15,21 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Library export prefix definition. */
+#ifdef LIBRARY_EXPORTS
+	#ifdef _WIN32
+		#define BAMBOO_API __declspec(dllexport)
+	#else
+		#define BAMBOO_API extern
+	#endif /* _WIN32 */
+#else
+	#ifdef _WIN32
+		#define BAMBOO_API __declspec(dllimport)
+	#else
+		#define BAMBOO_API
+	#endif /* _WIN32 */
+#endif /* LIBRARY_EXPORTS */
+
 // Unicode support.
 #ifdef _WIN32
 	#include <windows.h>
@@ -214,54 +229,54 @@ static const atom_t nil = { ATOM_TYPE_NIL };
 #define car(p)	   ((p).value.pair->atom[0])
 #define cdr(p)	   ((p).value.pair->atom[1])
 #define nilp(atom) ((atom).type == ATOM_TYPE_NIL)
-atom_t cons(atom_t _car, atom_t _cdr);
-bool listp(atom_t expr);
-bamboo_error_t apply(atom_t func, atom_t args, atom_t *result);
+BAMBOO_API atom_t cons(atom_t _car, atom_t _cdr);
+BAMBOO_API bool listp(atom_t expr);
+BAMBOO_API bamboo_error_t apply(atom_t func, atom_t args, atom_t *result);
 
 // Initialization and destruction.
-bamboo_error_t bamboo_init(env_t *env);
-bamboo_error_t bamboo_destroy(env_t *env);
+BAMBOO_API bamboo_error_t bamboo_init(env_t *env);
+BAMBOO_API bamboo_error_t bamboo_destroy(env_t *env);
 
 // Environment.
-env_t bamboo_env_new(env_t parent);
-bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
-bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
-bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
-	builtin_func_t func);
-env_t* bamboo_get_root_env(void);
+BAMBOO_API env_t bamboo_env_new(env_t parent);
+BAMBOO_API bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom);
+BAMBOO_API bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value);
+BAMBOO_API bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
+												 builtin_func_t func);
+BAMBOO_API env_t *bamboo_get_root_env(void);
 
 // Primitive creation.
-atom_t bamboo_int(int64_t num);
-atom_t bamboo_float(long double num);
-atom_t bamboo_symbol(const TCHAR *name);
-atom_t bamboo_boolean(bool value);
-atom_t bamboo_string(const TCHAR *str);
-atom_t bamboo_builtin(builtin_func_t func);
-bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
-	atom_t *result);
-atom_t bamboo_pointer(void *pointer);
+BAMBOO_API atom_t bamboo_int(int64_t num);
+BAMBOO_API atom_t bamboo_float(long double num);
+BAMBOO_API atom_t bamboo_symbol(const TCHAR *name);
+BAMBOO_API atom_t bamboo_boolean(bool value);
+BAMBOO_API atom_t bamboo_string(const TCHAR *str);
+BAMBOO_API atom_t bamboo_builtin(builtin_func_t func);
+BAMBOO_API bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
+										 atom_t *result);
+BAMBOO_API atom_t bamboo_pointer(void *pointer);
 
 // Parsing and evaluation.
-bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
-	atom_t *atom);
-bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
+BAMBOO_API bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
+											atom_t *atom);
+BAMBOO_API bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result);
 
 // Error handling.
-const TCHAR *bamboo_error_detail(void);
-bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg);
+BAMBOO_API const TCHAR *bamboo_error_detail(void);
+BAMBOO_API bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg);
 
 // List manipulation.
-uint16_t bamboo_list_count(atom_t list);
-atom_t bamboo_list_ref(atom_t list, uint16_t index);
-void bamboo_list_set(atom_t list, uint16_t index, atom_t value);
-void bamboo_list_reverse(atom_t *list);
+BAMBOO_API uint16_t bamboo_list_count(atom_t list);
+BAMBOO_API atom_t bamboo_list_ref(atom_t list, uint16_t index);
+BAMBOO_API void bamboo_list_set(atom_t list, uint16_t index, atom_t value);
+BAMBOO_API void bamboo_list_reverse(atom_t *list);
 
 // Debugging.
-void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err);
-void bamboo_print_error(bamboo_error_t err);
-void bamboo_expr_str(TCHAR **buf, atom_t atom);
-void bamboo_print_expr(atom_t atom);
-void bamboo_print_tokens(const TCHAR *str);
+BAMBOO_API void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err);
+BAMBOO_API void bamboo_print_error(bamboo_error_t err);
+BAMBOO_API void bamboo_expr_str(TCHAR **buf, atom_t atom);
+BAMBOO_API void bamboo_print_expr(atom_t atom);
+BAMBOO_API void bamboo_print_tokens(const TCHAR *str);
 
 #ifdef __cplusplus
 }
