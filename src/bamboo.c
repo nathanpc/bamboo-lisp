@@ -17,7 +17,9 @@
 #endif  // _WIN32_WCE
 #include <limits.h>
 #include <float.h>
-#define _USE_MATH_DEFINES
+#ifdef _MSC_VER
+	#define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 
 // Convinience macros.

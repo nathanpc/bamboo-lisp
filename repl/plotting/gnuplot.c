@@ -14,7 +14,7 @@
 #include <ctype.h>
 #ifdef _WIN32
 	#include "../windows/winutils.h"
-#endif  // _WIN32
+#endif // _WIN32
 
 // Private methods.
 void gnuplot_init(plot_t *plt);

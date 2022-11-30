@@ -15,6 +15,7 @@ extern "C" {
 #include "../../src/bamboo.h"
 #include <stdio.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 // Public definitions.
 #define GNUPLOT_STYLE_MAX_LEN 14
