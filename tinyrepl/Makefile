@@ -6,18 +6,15 @@
 include ../variables.mk
 
 # Sources and Flags
-BAMBOODIR := ../src
+BAMBOODIR := ../lisp
 TARGETS = improved_repl basic_repl
-CXXTARGETS = cpp_repl
 CFLAGS = -Wall -Wno-psabi
 LDFLAGS = 
 
 .PHONY: all clean
-all: $(TARGETS) $(CXXTARGETS)
+all: $(TARGETS)
 
 $(TARGETS): bamboo.o
-
-$(CXXTARGETS): bamboo.o BambooWrapper.o
 
 bamboo.o: $(BAMBOODIR)/bamboo.c
 	$(CC) $(CFLAGS) -c $< -o $@

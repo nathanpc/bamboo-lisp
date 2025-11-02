@@ -7,6 +7,7 @@
 PLATFORM := $(shell uname -s)
 
 # Tools
+AR    = ar
 CC    = gcc
 CXX   = g++
 RM    = rm -f

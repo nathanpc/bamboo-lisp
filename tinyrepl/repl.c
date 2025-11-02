@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../src/bamboo.h"
+#include "../lisp/bamboo.h"
 
 // Private definitions.
 #define REPL_INPUT_MAX_LEN 512
