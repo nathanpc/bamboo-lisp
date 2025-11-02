@@ -23,14 +23,14 @@ all: compile
 compile: $(BUILDDIR)/stamp $(TARGET)
 
 $(TARGET): $(OBJECTS) $(BAMBOOLIB)
-	@echo "Linking tiny REPL into an executable..."
+	@echo "$(COLOR_GREEN)Linking tiny REPL into an executable...$(COLOR_END)"
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BUILDDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILDDIR)/stamp:
-	@echo "Creating directory for tiny REPL build files..."
+	@echo "$(COLOR_BLUE)Creating directory for tiny REPL build files...$(COLOR_END)"
 	$(MKDIR) $(@D)
 	$(TOUCH) $@
 
@@ -42,17 +42,17 @@ run: compile
 
 debug: CFLAGS += -g3 -DDEBUG
 debug: compile
-	@echo "Compiled tiny REPL for debug!"
+	@echo "$(COLOR_YELLOW)Compiled tiny REPL for debug!$(COLOR_END)"
 	$(GDB) $(TARGET)
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
 memcheck: compile
-	@echo "Compiled tiny REPL for memcheck!"
+	@echo "$(COLOR_YELLOW)Compiled tiny REPL for memcheck!$(COLOR_END)"
 	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all \
 		--track-origins=yes --log-file=$(BUILDDIR)/valgrind.log $(TARGET)
 	cat $(BUILDDIR)/valgrind.log
 
 clean:
-	@echo "Cleaning tiny REPL build files..."
+	@echo "$(COLOR_GREEN)Cleaning tiny REPL build files...$(COLOR_END)"
 	$(RM) $(OBJECTS)
 	$(RM) $(TARGET)

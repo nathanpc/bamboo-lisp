@@ -20,14 +20,14 @@ all: compile
 compile: $(BUILDDIR)/stamp $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	@echo "Linking Lisp interpreter static library..."
+	@echo "$(COLOR_GREEN)Linking Lisp interpreter static library...$(COLOR_END)"
 	$(AR) -rcs $@ $^
 
 $(BUILDDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILDDIR)/stamp:
-	@echo "Creating directory for Lisp interpreter build files..."
+	@echo "$(COLOR_BLUE)Creating directory for Lisp interpreter build files...$(COLOR_END)"
 	$(MKDIR) $(@D)
 	$(TOUCH) $@
 
@@ -35,13 +35,13 @@ run: compile
 
 debug: CFLAGS += -g3 -DDEBUG
 debug: compile
-	@echo "Compiled Lisp interpreter for debug!"
+	@echo "$(COLOR_YELLOW)Compiled Lisp interpreter for debug!$(COLOR_END)"
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
 memcheck: compile
-	@echo "Compiled Lisp interpreter for memcheck!"
+	@echo "$(COLOR_YELLOW)Compiled Lisp interpreter for memcheck!$(COLOR_END)"
 
 clean:
-	@echo "Cleaning Lisp interpreter build files..."
+	@echo "$(COLOR_GREEN)Cleaning Lisp interpreter build files...$(COLOR_END)"
 	$(RM) $(OBJECTS)
 	$(RM) $(TARGET)
