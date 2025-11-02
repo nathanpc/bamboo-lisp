@@ -1,11 +1,10 @@
 ### variables.mk
-### Common variables used throught the project.
+### Common variables used throughout the project.
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
 # Environment
-PLATFORM     := $(shell uname -s)
-USE_PLOTTING := gnuplot
+PLATFORM := $(shell uname -s)
 
 # Tools
 CC    = gcc
@@ -25,11 +24,6 @@ endif
 # Flags
 CFLAGS  = -Wall -Wno-psabi
 LDFLAGS = -lm
-
-# Enable plotting.
-ifdef USE_PLOTTING
-	CFLAGS += -DUSE_PLOTTING
-endif
 
 # Enable Unicode on Windows platforms.
 ifeq ($(PLATFORM), Windows)
