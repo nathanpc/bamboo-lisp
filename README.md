@@ -6,6 +6,9 @@
 An extremely portable and embeddable (single source/header file) Lisp dialect
 written in C.
 
+**WARNING:** This project is undergoing a major rewrite. Most likely everything
+in this README is probably outdated information.
+
 
 ## Included Items
 
@@ -164,4 +167,5 @@ I've always wanted to write my own Lisp, and after taking a quick look at
 
 ## License
 
-This project is licensed under the [MIT License](/LICENSE.txt).
+This application is free software; you may redistribute and/or modify it under the
+terms of the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
