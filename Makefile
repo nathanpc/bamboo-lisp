@@ -1,31 +1,25 @@
 ### Makefile
-### Automates the build and everything else of the project.
+### Automates the build of the project.
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
 include variables.mk
 
 # Directories and Paths
-SRCDIR = src
-REPLDIR = repl
+LISPDIR  := lisp
+REPLDIR  := tinyrepl
 BUILDDIR := build
-EXAMPLEDIR := examples
 
-# Sources and Flags
-SOURCES += $(SRCDIR)/bamboo.c $(SRCDIR)/BambooWrapper.cpp
-OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BUILDDIR)/%.o, $(SOURCES))
-OBJECTS := $(patsubst $(SRCDIR)/%.cpp, $(BUILDDIR)/%.o, $(OBJECTS))
+# Targets
+REPLEXE   := $(BUILDDIR)/$(REPLDIR)/$(REPLDIR)
+BAMBOOLIB := $(BUILDDIR)/$(LISPDIR)/libbamboo.a
 
-.PHONY: all compile run test debug memcheck repl examples clean
-all: compile repl
+.PHONY: all compile run test debug memcheck clean
+all: compile
 
-compile: $(BUILDDIR)/stamp $(OBJECTS)
-
-$(BUILDDIR)/%.o: $(SRCDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
-	$(CC) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
+compile: $(BUILDDIR)/stamp
+	cd $(LISPDIR) && $(MAKE) compile
+	cd $(REPLDIR) && $(MAKE) compile
 
 $(BUILDDIR)/stamp:
 	$(MKDIR) $(@D)
@@ -34,22 +28,14 @@ $(BUILDDIR)/stamp:
 run: compile
 	cd $(REPLDIR) && $(MAKE) run
 
-debug: CFLAGS += -g3 -DDEBUG
-debug: clean compile
+debug: $(BUILDDIR)/stamp
+	cd $(LISPDIR) && $(MAKE) debug
 	cd $(REPLDIR) && $(MAKE) debug
 
-memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
-memcheck: clean compile
+memcheck: $(BUILDDIR)/stamp clean
+	cd $(LISPDIR) && $(MAKE) memcheck
 	cd $(REPLDIR) && $(MAKE) memcheck
 
-repl: compile
-	cd $(REPLDIR) && $(MAKE)
-
-examples: compile
-	cd $(EXAMPLEDIR) && $(MAKE)
-
 clean:
-	$(RM) -r $(BUILDDIR)
-	$(RM) valgrind.log
+	cd $(LISPDIR) && $(MAKE) clean
 	cd $(REPLDIR) && $(MAKE) clean
-	cd $(EXAMPLEDIR) && $(MAKE) clean
