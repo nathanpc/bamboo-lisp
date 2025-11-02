@@ -1,40 +1,53 @@
 ### Makefile
-### Automates the build of the Bamboo examples.
+### Automates the build of the tiny REPL for testing.
 ###
 ### Author: Nathan Campos <nathan@innoveworkshop.com>
 
 include ../variables.mk
 
+# Project
+PROJECT := tinyrepl
+
+# Directories and Paths
+BUILDDIR  := ../build/$(PROJECT)
+TARGET    := $(BUILDDIR)/$(PROJECT)
+BAMBOOLIB := ../build/lisp/libbamboo.a
+
 # Sources and Flags
-BAMBOODIR := ../lisp
-TARGETS = improved_repl basic_repl
-CFLAGS = -Wall -Wno-psabi
-LDFLAGS = 
+SOURCES := repl.c
+OBJECTS := $(patsubst %.c, $(BUILDDIR)/%.o, $(SOURCES))
 
-.PHONY: all clean
-all: $(TARGETS)
+.PHONY: all compile run debug memcheck clean
+all: compile
 
-$(TARGETS): bamboo.o
+compile: $(BUILDDIR)/stamp $(TARGET)
 
-bamboo.o: $(BAMBOODIR)/bamboo.c
+$(TARGET): $(OBJECTS) $(BAMBOOLIB)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILDDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-BambooWrapper.o: $(BAMBOODIR)/BambooWrapper.cpp
-	$(CXX) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
+$(BUILDDIR)/stamp:
+	$(MKDIR) $(@D)
+	$(TOUCH) $@
 
-$(TARGETS): %: %.o bamboo.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+$(BAMBOOLIB):
+	cd ../lisp && $(MAKE)
 
-$(CXXTARGETS): %: %.o bamboo.o BambooWrapper.o
-	$(CXX) $(CFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+run: compile
+	$(TARGET)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+debug: CFLAGS += -g3 -DDEBUG
+debug: compile
+	$(GDB) $(TARGET)
 
-%.o: %.cpp
-	$(CXX) $(CFLAGS) $(CXXFLAGS) -c $< -o $@
+memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
+memcheck: compile
+	valgrind --tool=memcheck --leak-check=yes --show-leak-kinds=all \
+		--track-origins=yes --log-file=$(BUILDDIR)/valgrind.log $(TARGET)
+	cat $(BUILDDIR)/valgrind.log
 
 clean:
-	$(RM) *.o
-	$(RM) $(TARGETS)
-	$(RM) $(CXXTARGETS)
+	$(RM) $(OBJECTS)
+	$(RM) $(TARGET)
