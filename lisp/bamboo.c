@@ -1,6 +1,6 @@
 /**
  * bamboo.c
- * The amazingly embeddable Lisp.
+ * A small and purpose-built Lisp dialect focused on scientific problem solving.
  *
  * @author Nathan Campos <nathan@innoveworkshop.com>
  */
@@ -17,10 +17,9 @@
 #endif  // _WIN32_WCE
 #include <limits.h>
 #include <float.h>
-#define _USE_MATH_DEFINES
 #include <math.h>
 
-// Convinience macros.
+// Convenience macros.
 #define IF_ERROR(err)        IF_BAMBOO_ERROR(err)
 #define IF_SPECIAL_COND(err) IF_BAMBOO_SPECIAL_COND(err)
 #define IF_NOT_ERROR(err)    if ((err) <= BAMBOO_OK)
@@ -44,20 +43,13 @@
 	#define LLONG_MIN _I64_MIN
 #endif  // LLONG_MIN
 
-// Unix variants never implemented snwprintf. *facepalm*
-#if defined(UNICODE) && !defined(snwprintf) && !defined(_WIN32)
-	#define IMPLEMENT_SNWPRINTF
-	#define SNWPRINTF_MAX_LEN 1024  // Ugh.
-	int snwprintf(wchar_t *buf, size_t len, const wchar_t *format, ...);
-#endif  // snwprintf
-
 // Private definitions.
 #define ERROR_MSG_STR_LEN 200
 
 // Token structure.
 typedef struct {
-	const TCHAR *start;
-	const TCHAR *end;
+	const char *start;
+	const char *end;
 } token_t;
 
 // Stack frame definitions.
