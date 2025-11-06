@@ -14,7 +14,7 @@ BUILDDIR := build
 REPLEXE   := $(BUILDDIR)/$(REPLDIR)/$(REPLDIR)
 BAMBOOLIB := $(BUILDDIR)/$(LISPDIR)/libbamboo.a
 
-.PHONY: all compile run test debug memcheck clean
+.PHONY: all compile run test debug gdb memcheck clean
 all: compile
 
 compile: $(BUILDDIR)/stamp
@@ -31,6 +31,9 @@ run: compile
 debug: $(BUILDDIR)/stamp
 	cd $(LISPDIR) && $(MAKE) debug
 	cd $(REPLDIR) && $(MAKE) debug
+
+gdb: debug
+	cd $(REPLDIR) && $(MAKE) gdb
 
 memcheck: $(BUILDDIR)/stamp clean
 	cd $(LISPDIR) && $(MAKE) memcheck

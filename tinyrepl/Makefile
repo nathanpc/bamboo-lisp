@@ -17,7 +17,7 @@ BAMBOOLIB := ../build/lisp/libbamboo.a
 SOURCES := repl.c
 OBJECTS := $(patsubst %.c, $(BUILDDIR)/%.o, $(SOURCES))
 
-.PHONY: all compile run debug memcheck clean
+.PHONY: all compile run debug gdb memcheck clean
 all: compile
 
 compile: $(BUILDDIR)/stamp $(TARGET)
@@ -43,6 +43,9 @@ run: compile
 debug: CFLAGS += -g3 -DDEBUG
 debug: compile
 	@echo "$(COLOR_YELLOW)Compiled tiny REPL for debug!$(COLOR_END)"
+
+gdb: debug
+	@echo "$(COLOR_GREEN)Running tiny REPL via GDB...$(COLOR_END)"
 	$(GDB) $(TARGET)
 
 memcheck: CFLAGS += -g3 -DDEBUG -DMEMCHECK
