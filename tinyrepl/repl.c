@@ -37,8 +37,7 @@ int main(void) {
 	// Allocate memory for the REPL input data.
 	input = (char *)malloc(sizeof(char) * (REPL_INPUT_MAX_LEN + 1));
 	if (input == NULL) {
-		fprintf(stderr, "Can't allocate the input string for the REPL"
-			LINEBREAK);
+		fprintf(stderr, "Can't allocate the input string for the REPL\n");
 		return 1;
 	}
 
@@ -48,7 +47,7 @@ int main(void) {
 		atom_t result;
 		const char *end = input;
 
-		// Check if we've parsed all of the statements in the expression.
+		// Check if we've parsed all statements in the expression.
 		while (*end != '\0') {
 			// Parse the user's input.
 			err = bamboo_parse_expr(end, &end, &parsed);
@@ -56,14 +55,14 @@ int main(void) {
 				uint8_t spaces;
 
 				// Show where the user was wrong.
-				printf("%s %s", input, LINEBREAK);
+				printf("%s\n", input);
 				for (spaces = 0; spaces < (end - input); spaces++)
 					putchar(' ');
 				printf("^ ");
 
 				// Show the error message.
 				bamboo_print_error(err);
-				fprintf(stderr, LINEBREAK);
+				fprintf(stderr, "\n");
 
 				continue;
 			}
@@ -72,7 +71,7 @@ int main(void) {
 			err = bamboo_eval_expr(parsed, env, &result);
 			IF_BAMBOO_ERROR(err) {
 				bamboo_print_error(err);
-				fprintf(stderr, LINEBREAK);
+				fprintf(stderr, "\n");
 
 				continue;
 			}
@@ -80,13 +79,13 @@ int main(void) {
 
 		// Print the last evaluated result.
 		bamboo_print_expr(result);
-		printf(LINEBREAK);
+		printf("\n");
 	}
 
 	// Quit.
 	err = bamboo_destroy(&env);
 	free(input);
-	printf("Bye!" LINEBREAK);
+	printf("Bye!\n");
 
 	return err;
 }
@@ -165,7 +164,7 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 
 	// Check if we don't have any arguments.
 	if (nilp(args)) {
-		printf("Quitting from a custom built-in function." LINEBREAK);
+		printf("Quitting from a custom built-in function.\n");
 		retval = 0;
 
 		goto destroy;
@@ -183,8 +182,8 @@ bamboo_error_t builtin_quit(atom_t args, atom_t *result) {
 		return BAMBOO_ERROR_WRONG_TYPE;
 
 	// Exit with the specified return value.
-	printf("Quitting from a custom built-in function with return value %lld."
-		LINEBREAK, arg1.value.integer);
+	printf("Quitting from a custom built-in function with return value %lld.\n",
+		arg1.value.integer);
 	retval = (int)arg1.value.integer;
 
 destroy:

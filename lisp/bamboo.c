@@ -75,39 +75,39 @@ typedef enum {
 typedef struct allocation_s allocation_t;
 struct allocation_s {
 	pair_t pair;
-	TCHAR *str;
+	char *str;
 	alloc_type_t type;
 	gc_mark_t mark;
 	allocation_t *next;
 };
 
 // Private variables.
-static TCHAR bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
+static char bamboo_error_msg[ERROR_MSG_STR_LEN + 1];
 static atom_t bamboo_symbol_table = { ATOM_TYPE_NIL };
 static allocation_t *bamboo_allocations = NULL;
 static uint32_t bamboo_gc_iter_counter = 0;
 static env_t *bamboo_root_env = NULL;
 
 // Private methods.
-void putstr(const TCHAR *str);
-void putstrerr(const TCHAR *str);
-TCHAR* strcpyse(const TCHAR *start, const TCHAR *end);
-bool contains_point(const TCHAR *str);
+void putstr(const char *str);
+void putstrerr(const char *str);
+char* strcpyse(const char *start, const char *end);
+bool contains_point(const char *str);
 bool atom_boolean_val(atom_t atom);
-void set_error_msg(const TCHAR *msg);
-void fatal_error(bamboo_error_t err, const TCHAR *msg);
+void set_error_msg(const char *msg);
+void fatal_error(bamboo_error_t err, const char *msg);
 void gc_mark(atom_t root);
 void gc(bool respect_marks);
 atom_t shallow_copy_list(atom_t list);
-bamboo_error_t lex(const TCHAR *str, token_t *token);
-bamboo_error_t parse_hash_expr(const token_t *token, const TCHAR **end,
+bamboo_error_t lex(const char *str, token_t *token);
+bamboo_error_t parse_hash_expr(const token_t *token, const char **end,
 	atom_t *atom);
-bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_primitive(const token_t *token, const char **end,
 	atom_t *atom);
-bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_string(const token_t *token, const char **end,
 	atom_t *atom);
-bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom);
-bamboo_error_t parse_comment(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom);
+bamboo_error_t parse_comment(const token_t *token, const char **end,
 	atom_t *atom);
 frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail);
 bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env);
@@ -157,18 +157,19 @@ bamboo_error_t populate_builtins(env_t *env);
 /**
  * Initializes the Bamboo interpreter environment.
  *
- * @param  env Pointer to the root environment of the interpreter.
- * @return     BAMBOO_OK if everything went fine.
+ * @param env Pointer to the root environment of the interpreter.
+ *
+ * @return BAMBOO_OK if everything went fine.
  */
 bamboo_error_t bamboo_init(env_t *env) {
 	bamboo_error_t err;
 
 	// Display a pretty welcome message.
-	putstr(_T("Bamboo Lisp v0.1a") LINEBREAK LINEBREAK);
+	putstr("Bamboo Lisp v0.1a\n\n");
 
 	// Make sure the error message string is properly terminated.
-	bamboo_error_msg[0] = _T('\0');
-	bamboo_error_msg[ERROR_MSG_STR_LEN] = _T('\0');
+	bamboo_error_msg[0] = '\0';
+	bamboo_error_msg[ERROR_MSG_STR_LEN] = '\0';
 
 	// Make sure the garbage collection iteration counter is zeroed out.
 	bamboo_gc_iter_counter = 0;
@@ -188,8 +189,9 @@ bamboo_error_t bamboo_init(env_t *env) {
 /**
  * Destroys an Bamboo interpreter environment.
  *
- * @param  env Pointer to the root environment of the interpreter.
- * @return     BAMBOO_OK if everything went fine.
+ * @param env Pointer to the root environment of the interpreter.
+ *
+ * @return BAMBOO_OK if everything went fine.
  */
 bamboo_error_t bamboo_destroy(env_t *env) {
 	gc(false);
@@ -199,136 +201,137 @@ bamboo_error_t bamboo_destroy(env_t *env) {
 /**
  * Populates the environment with our built-in functions.
  *
- * @param  env Pointer to the environment to be populated.
- * @return     BAMBOO_OK if the population was successful.
+ * @param env Pointer to the environment to be populated.
+ *
+ * @return BAMBOO_OK if the population was successful.
  */
 bamboo_error_t populate_builtins(env_t *env) {
 	bamboo_error_t err;
 
 	// Basic pair operations.
-	err = bamboo_env_set_builtin(*env, _T("CAR"), builtin_car);
+	err = bamboo_env_set_builtin(*env, "CAR", builtin_car);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("CDR"), builtin_cdr);
+	err = bamboo_env_set_builtin(*env, "CDR", builtin_cdr);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("CONS"), builtin_cons);
+	err = bamboo_env_set_builtin(*env, "CONS", builtin_cons);
 	IF_ERROR(err)
 		return err;
 
 	// Arithmetic operations.
-	err = bamboo_env_set_builtin(*env, _T("+"), builtin_sum);
+	err = bamboo_env_set_builtin(*env, "+", builtin_sum);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("-"), builtin_subtract);
+	err = bamboo_env_set_builtin(*env, "-", builtin_subtract);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("*"), builtin_multiply);
+	err = bamboo_env_set_builtin(*env, "*", builtin_multiply);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("/"), builtin_divide);
+	err = bamboo_env_set_builtin(*env, "/", builtin_divide);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("MOD"), builtin_modulo);
+	err = bamboo_env_set_builtin(*env, "MOD", builtin_modulo);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("EXPT"), builtin_expt);
+	err = bamboo_env_set_builtin(*env, "EXPT", builtin_expt);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("FLOOR"), builtin_floor);
+	err = bamboo_env_set_builtin(*env, "FLOOR", builtin_floor);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("ROUND"), builtin_round);
+	err = bamboo_env_set_builtin(*env, "ROUND", builtin_round);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("CEIL"), builtin_ceil);
+	err = bamboo_env_set_builtin(*env, "CEIL", builtin_ceil);
 	IF_ERROR(err)
 		return err;
 
 	// Boolean operations.
-	err = bamboo_env_set_builtin(*env, _T("NOT"), builtin_not);
+	err = bamboo_env_set_builtin(*env, "NOT", builtin_not);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("AND"), builtin_and);
+	err = bamboo_env_set_builtin(*env, "AND", builtin_and);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("OR"), builtin_or);
+	err = bamboo_env_set_builtin(*env, "OR", builtin_or);
 	IF_ERROR(err)
 		return err;
 
 	// Predicates for numbers.
-	err = bamboo_env_set_builtin(*env, _T("="), builtin_numeq);
+	err = bamboo_env_set_builtin(*env, "=", builtin_numeq);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("<"), builtin_lt);
+	err = bamboo_env_set_builtin(*env, "<", builtin_lt);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T(">"), builtin_gt);
+	err = bamboo_env_set_builtin(*env, ">", builtin_gt);
 	IF_ERROR(err)
 		return err;
 
 	// Atom testing.
-	err = bamboo_env_set_builtin(*env, _T("EQ?"), builtin_eq);
+	err = bamboo_env_set_builtin(*env, "EQ?", builtin_eq);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("NIL?"), builtin_nilp);
+	err = bamboo_env_set_builtin(*env, "NIL?", builtin_nilp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("PAIR?"), builtin_pairp);
+	err = bamboo_env_set_builtin(*env, "PAIR?", builtin_pairp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("SYMBOL?"), builtin_symbolp);
+	err = bamboo_env_set_builtin(*env, "SYMBOL?", builtin_symbolp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("INTEGER?"), builtin_integerp);
+	err = bamboo_env_set_builtin(*env, "INTEGER?", builtin_integerp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("FLOAT?"), builtin_floatp);
+	err = bamboo_env_set_builtin(*env, "FLOAT?", builtin_floatp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("NUMERIC?"), builtin_numericp);
+	err = bamboo_env_set_builtin(*env, "NUMERIC?", builtin_numericp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("BOOLEAN?"), builtin_booleanp);
+	err = bamboo_env_set_builtin(*env, "BOOLEAN?", builtin_booleanp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("BUILTIN?"), builtin_builtinp);
+	err = bamboo_env_set_builtin(*env, "BUILTIN?", builtin_builtinp);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("CLOSURE?"), builtin_closurep);
+	err = bamboo_env_set_builtin(*env, "CLOSURE?", builtin_closurep);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("MACRO?"), builtin_macrop);
+	err = bamboo_env_set_builtin(*env, "MACRO?", builtin_macrop);
 	IF_ERROR(err)
 		return err;
 
 	// Console I/O.
-	err = bamboo_env_set_builtin(*env, _T("DISPLAY"), builtin_display);
+	err = bamboo_env_set_builtin(*env, "DISPLAY", builtin_display);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("CONCAT"), builtin_concat);
+	err = bamboo_env_set_builtin(*env, "CONCAT", builtin_concat);
 	IF_ERROR(err)
 		return err;
-	err = bamboo_env_set_builtin(*env, _T("NEWLINE"), builtin_newline);
+	err = bamboo_env_set_builtin(*env, "NEWLINE", builtin_newline);
 	IF_ERROR(err)
 		return err;
 
 	// Misc.
-	err = bamboo_env_set_builtin(*env, _T("DISPLAY-ENV"), builtin_display_env);
+	err = bamboo_env_set_builtin(*env, "DISPLAY-ENV", builtin_display_env);
 	IF_ERROR(err)
 		return err;
 
 	// Mathematical constants.
-	err = bamboo_env_set(*env, bamboo_symbol(_T("E")), bamboo_float(M_E));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("LOG2E")), bamboo_float(M_LOG2E));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("LOG10E")), bamboo_float(M_LOG10E));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("LN2")), bamboo_float(M_LN2));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("LN10")), bamboo_float(M_LN10));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("PI")), bamboo_float(M_PI));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("PI/2")), bamboo_float(M_PI_2));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("PI/4")), bamboo_float(M_PI_4));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("SQRT2")), bamboo_float(M_SQRT2));
-	err = bamboo_env_set(*env, bamboo_symbol(_T("SQRT1/2")), bamboo_float(M_SQRT1_2));
+	err = bamboo_env_set(*env, bamboo_symbol("E"), bamboo_float(M_E));
+	err = bamboo_env_set(*env, bamboo_symbol("LOG2E"), bamboo_float(M_LOG2E));
+	err = bamboo_env_set(*env, bamboo_symbol("LOG10E"), bamboo_float(M_LOG10E));
+	err = bamboo_env_set(*env, bamboo_symbol("LN2"), bamboo_float(M_LN2));
+	err = bamboo_env_set(*env, bamboo_symbol("LN10"), bamboo_float(M_LN10));
+	err = bamboo_env_set(*env, bamboo_symbol("PI"), bamboo_float(M_PI));
+	err = bamboo_env_set(*env, bamboo_symbol("PI/2"), bamboo_float(M_PI_2));
+	err = bamboo_env_set(*env, bamboo_symbol("PI/4"), bamboo_float(M_PI_4));
+	err = bamboo_env_set(*env, bamboo_symbol("SQRT2"), bamboo_float(M_SQRT2));
+	err = bamboo_env_set(*env, bamboo_symbol("SQRT1/2"), bamboo_float(M_SQRT1_2));
 
 	return BAMBOO_OK;
 }
@@ -342,8 +345,9 @@ bamboo_error_t populate_builtins(env_t *env) {
 /**
  * Builds an integer atom.
  *
- * @param  num Integer number.
- * @return     Integer atom.
+ * @param num Integer number.
+ *
+ * @return Integer atom.
  */
 atom_t bamboo_int(int64_t num) {
 	atom_t atom;
@@ -358,8 +362,9 @@ atom_t bamboo_int(int64_t num) {
 /**
  * Builds an floating-point atom.
  *
- * @param  num Double floating-point number.
- * @return     Floating-point atom.
+ * @param num Double floating-point number.
+ *
+ * @return Floating-point atom.
  */
 atom_t bamboo_float(long double num) {
 	atom_t atom;
@@ -374,10 +379,11 @@ atom_t bamboo_float(long double num) {
 /**
  * Builds an symbol atom.
  *
- * @param  name Symbol name.
- * @return      Symbol atom.
+ * @param name Symbol name.
+ *
+ * @return Symbol atom.
  */
-atom_t bamboo_symbol(const TCHAR *name) {
+atom_t bamboo_symbol(const char *name) {
 	atom_t atom;
 	atom_t tmp;
 	allocation_t *alloc;
@@ -386,7 +392,7 @@ atom_t bamboo_symbol(const TCHAR *name) {
 	tmp = bamboo_symbol_table;
 	while (!nilp(tmp)) {
 		atom = car(tmp);
-		if (_tcscmp(*atom.value.symbol, name) == 0)
+		if (strcmp(*atom.value.symbol, name) == 0)
 			return atom;
 
 		tmp = cdr(tmp);
@@ -395,15 +401,15 @@ atom_t bamboo_symbol(const TCHAR *name) {
 	// Create a new allocation for the symbol name.
 	alloc = (allocation_t *)malloc(sizeof(allocation_t));
 	if (alloc == NULL) {
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate structure for ")
-			_T("garbage collector symbol allocation tracking"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate structure for "
+			"garbage collector symbol allocation tracking");
 		return nil;
 	}
 
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
 	alloc->type = ALLOCATION_TYPE_STRING;
-	alloc->str = _tcsdup(name);
+	alloc->str = strdup(name);
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -419,8 +425,9 @@ atom_t bamboo_symbol(const TCHAR *name) {
 /**
  * Build an boolean atom.
  *
- * @param  value Boolean value for the atom.
- * @return       Boolean atom.
+ * @param value Boolean value for the atom.
+ *
+ * @return Boolean atom.
  */
 atom_t bamboo_boolean(bool value) {
 	atom_t atom;
@@ -435,25 +442,26 @@ atom_t bamboo_boolean(bool value) {
 /**
  * Builds an string atom.
  *
- * @param  str String to be stored.
- * @return     String atom.
+ * @param str String to be stored.
+ *
+ * @return String atom.
  */
-atom_t bamboo_string(const TCHAR *str) {
+atom_t bamboo_string(const char *str) {
 	allocation_t *alloc;
 	atom_t atom;
 
 	// Create a new allocation.
 	alloc = (allocation_t *)malloc(sizeof(allocation_t));
 	if (alloc == NULL) {
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate structure for ")
-			_T("garbage collector string allocation tracking"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate structure for "
+			"garbage collector string allocation tracking");
 		return nil;
 	}
 
 	// Fill up the new allocation and push the linked list forward.
 	alloc->mark = GC_TO_FREE;
 	alloc->type = ALLOCATION_TYPE_STRING;
-	alloc->str = _tcsdup(str);
+	alloc->str = strdup(str);
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
@@ -467,8 +475,9 @@ atom_t bamboo_string(const TCHAR *str) {
 /**
  * Builds an built-in function atom.
  *
- * @param  func Built-in C function.
- * @return      Built-in function atom.
+ * @param func Built-in C function.
+ *
+ * @return Built-in function atom.
  */
 atom_t bamboo_builtin(builtin_func_t func) {
 	atom_t atom;
@@ -483,11 +492,12 @@ atom_t bamboo_builtin(builtin_func_t func) {
 /**
  * Builds an closure (procedure) atom.
  *
- * @param  env    Environment for this closure.
- * @param  args   Arguments for the closure.
- * @param  body   Body of the closure.
- * @param  result Pointer to store the resulting atom.
- * @return        BAMBOO_OK if the atom creation was successful.
+ * @param env    Environment for this closure.
+ * @param args   Arguments for the closure.
+ * @param body   Body of the closure.
+ * @param result Pointer to store the resulting atom.
+ *
+ * @return BAMBOO_OK if the atom creation was successful.
  */
 bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 		atom_t *result) {
@@ -495,7 +505,7 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 
 	// Check if the body is a list.
 	if (!listp(body))
-		return bamboo_error(BAMBOO_ERROR_SYNTAX, _T("Closure body must be a list"));
+		return bamboo_error(BAMBOO_ERROR_SYNTAX, "Closure body must be a list");
 
 	// Check if all argument names are symbols or if it ends in a pair.
 	tmp = args;
@@ -508,7 +518,7 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 		} else if ((tmp.type != ATOM_TYPE_PAIR) ||
 				(car(tmp).type != ATOM_TYPE_SYMBOL)) {
 			return bamboo_error(BAMBOO_ERROR_SYNTAX,
-				_T("All arguments must be symbols or a pair at the end"));
+				"All arguments must be symbols or a pair at the end");
 		}
 
 		// Next argument.
@@ -525,8 +535,9 @@ bamboo_error_t bamboo_closure(env_t env, atom_t args, atom_t body,
 /**
  * Builds an pointer atom.
  *
- * @param  pointer Pointer to be stored.
- * @return         Pointer atom.
+ * @param pointer Pointer to be stored.
+ *
+ * @return Pointer atom.
  */
 atom_t bamboo_pointer(void *pointer) {
 	atom_t atom;
@@ -547,9 +558,10 @@ atom_t bamboo_pointer(void *pointer) {
 /**
  * Builds a pair atom from two other atoms.
  *
- * @param  _car Left-hand side of the atom pair.
- * @param  _cdr Right-hand side of the atom pair.
- * @return      Atom pair.
+ * @param _car Left-hand side of the atom pair.
+ * @param _cdr Right-hand side of the atom pair.
+ *
+ * @return Atom pair.
  */
 atom_t cons(atom_t _car, atom_t _cdr) {
 	allocation_t *alloc;
@@ -558,8 +570,8 @@ atom_t cons(atom_t _car, atom_t _cdr) {
 	// Create a new allocation.
 	alloc = (allocation_t *)malloc(sizeof(allocation_t));
 	if (alloc == NULL) {
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate structure for ")
-			_T("garbage collector allocation tracking"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate structure for "
+			"garbage collector allocation tracking");
 		return nil;
 	}
 
@@ -569,7 +581,7 @@ atom_t cons(atom_t _car, atom_t _cdr) {
 	alloc->next = bamboo_allocations;
 	bamboo_allocations = alloc;
 
-	// Setup the pair atom.
+	// Set up the pair atom.
 	pair.type = ATOM_TYPE_PAIR;
 	pair.value.pair = &alloc->pair;
 
@@ -583,8 +595,9 @@ atom_t cons(atom_t _car, atom_t _cdr) {
 /**
  * Checks if an atom is a list.
  *
- * @param  expr Expression to be checked.
- * @return      TRUE if the expression is a valid list.
+ * @param expr Expression to be checked.
+ *
+ * @return TRUE if the expression is a valid list.
  */
 bool listp(atom_t expr) {
 	// Iterate over the expression until we reach the final nil atom.
@@ -605,10 +618,11 @@ bool listp(atom_t expr) {
  * Calls a built-in function or a closure with the supplied arguments and get
  * the result.
  *
- * @param  func   Built-in function atom.
- * @param  args   Arguments to be passed to the function.
- * @param  result Pointer to the result of the operation.
- * @return        BAMBOO_OK if the function call was successful.
+ * @param func   Built-in function atom.
+ * @param args   Arguments to be passed to the function.
+ * @param result Pointer to the result of the operation.
+ *
+ * @return BAMBOO_OK if the function call was successful.
  */
 bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 	env_t env;
@@ -621,7 +635,7 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 		return (*func.value.builtin)(args, result);
 	} else if (func.type != ATOM_TYPE_CLOSURE) {
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-			_T("Function atom must be of type built-in or closure"));
+			"Function atom must be of type built-in or closure");
 	}
 
 	// Create a local environment for the closure and get its different parts.
@@ -642,7 +656,7 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 		// Check if the argument value list ends prematurely.
 		if (nilp(args)) {
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Argument value list ended prematurely"));
+				"Argument value list ended prematurely");
 		}
 
 		// Assign the value to the argument.
@@ -656,7 +670,7 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 	// Check if we still have argument values that weren't assigned.
 	if (!nilp(args)) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("Too many argument values passed to the closure"));
+			"Too many argument values passed to the closure");
 	}
 
 	// Evaluate the body of the closure with our local environment.
@@ -675,8 +689,9 @@ bamboo_error_t apply(atom_t func, atom_t args, atom_t *result) {
 /**
  * Creates a shallow copy of a list.
  *
- * @param  list List to be copied.
- * @return      Shallow copy of the list.
+ * @param list List to be copied.
+ *
+ * @return Shallow copy of the list.
  */
 atom_t shallow_copy_list(atom_t list) {
 	atom_t copied;
@@ -704,8 +719,9 @@ atom_t shallow_copy_list(atom_t list) {
 /**
  * Counts the number of elements in a list.
  *
- * @param  list List atom to have its elements counted.
- * @return      Number of elements in the list. 0 if it isn't a valid list.
+ * @param list List atom to have its elements counted.
+ *
+ * @return Number of elements in the list. 0 if it isn't a valid list.
  */
 uint16_t bamboo_list_count(atom_t list) {
 	uint16_t count = 0;
@@ -727,9 +743,10 @@ uint16_t bamboo_list_count(atom_t list) {
 /**
  * Gets an element at an index from a list. Just like 'list-ref' in Scheme.
  *
- * @param  list  List you want the element from.
- * @param  index Index of the element you want.
- * @return       Element at the specified index of the list.
+ * @param list  List you want the element from.
+ * @param index Index of the element you want.
+ *
+ * @return Element at the specified index of the list.
  */
 atom_t bamboo_list_ref(atom_t list, uint16_t index) {
 	// Iterate through the list.
@@ -787,23 +804,24 @@ void bamboo_list_reverse(atom_t *list) {
 /**
  * A very simple lexer to find the beginning and the end of tokens in a string.
  *
- * @param  str   String to be scanned for tokens.
- * @param  token Pointer to the token structure that will hold the beginning and
- *               the end of a token string.
- * @return       BAMBOO_OK if a token was found. BAMBOO_ERROR_SYNTAX if we've
- *               reached the end of the string without finding any tokens.
+ * @param str   String to be scanned for tokens.
+ * @param token Pointer to the token structure that will hold the beginning and
+ *              the end of a token string.
+ *
+ * @return BAMBOO_OK if a token was found. BAMBOO_ERROR_SYNTAX if we've reached
+ *         the end of the string without finding any tokens.
  */
-bamboo_error_t lex(const TCHAR *str, token_t *token) {
-	const TCHAR *tmp = str;
-	const TCHAR *wspace = _T(" \t\r\n");
-	const TCHAR *delim = _T("()\"; \t\r\n");
-	const TCHAR *prefix = _T("()\'`\";");
+bamboo_error_t lex(const char *str, token_t *token) {
+	const char *tmp = str;
+	const char *wspace = " \t\r\n";
+	const char *delim = "()\"; \t\r\n";
+	const char *prefix = "()\'`\";";
 
 	// Skip any leading whitespace.
-	tmp += _tcsspn(tmp, wspace);
+	tmp += strspn(tmp, wspace);
 
 	// Check if this was an empty line.
-	if (tmp[0] == _T('\0')) {
+	if (tmp[0] == '\0') {
 		token->start = tmp;
 		token->end = tmp;
 
@@ -814,30 +832,31 @@ bamboo_error_t lex(const TCHAR *str, token_t *token) {
 	token->start = tmp;
 
 	// Check if the token is just a parenthesis or unquotation.
-	if (_tcschr(prefix, tmp[0]) != NULL) {
+	if (strchr(prefix, tmp[0]) != NULL) {
 		token->end = tmp + 1;
 		return BAMBOO_OK;
-	} else if (tmp[0] == _T(',')) {
+	} else if (tmp[0] == ',') {
 		// Detect the end of an unquote or unquote splicing.
-		token->end = tmp + (tmp[1] == _T('@') ? 2 : 1);
+		token->end = tmp + (tmp[1] == '@' ? 2 : 1);
 
 		return BAMBOO_OK;
 	}
 
 	// Find the end of the token.
-	token->end = tmp + _tcscspn(tmp, delim);
+	token->end = tmp + strcspn(tmp, delim);
 	return BAMBOO_OK;
 }
 
 /**
  * Parses an generic expression.
  *
- * @param  input Expression as a string.
- * @param  end   Pointer that will hold the point where the parsing stopped.
- * @param  atom  Pointer to the atom object generated from the expression.
- * @return       BAMBOO_OK if the parsing was successful.
+ * @param input Expression as a string.
+ * @param end   Pointer that will hold the point where the parsing stopped.
+ * @param atom  Pointer to the atom object generated from the expression.
+ *
+ * @return BAMBOO_OK if the parsing was successful.
  */
-bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
+bamboo_error_t bamboo_parse_expr(const char *input, const char **end,
 								 atom_t *atom) {
 	token_t token;
 	bamboo_error_t err;
@@ -858,29 +877,29 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 
 	// Try to parse the toke we've found.
 	switch (token.start[0]) {
-	case _T('\"'):
+	case '\"':
 		// String
 		return parse_string(&token, end, atom);
-	case _T('('):
+	case '(':
 		// List beginning.
 		return parse_list(token.end, end, atom);
-	case _T(')'):
+	case ')':
 		// List ending.
 		return BAMBOO_PAREN_END;
-	case _T('\''):
+	case '\'':
 		// Parse quoted body.
-		*atom = cons(bamboo_symbol(_T("QUOTE")), cons(nil, nil));
+		*atom = cons(bamboo_symbol("QUOTE"), cons(nil, nil));
 		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
-	case _T('`'):
+	case '`':
 		// Quasiquote
-		*atom = cons(bamboo_symbol(_T("QUASIQUOTE")), cons(nil, nil));
+		*atom = cons(bamboo_symbol("QUASIQUOTE"), cons(nil, nil));
 		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
-	case _T(','):
+	case ',':
 		// Unquote
-		*atom = cons(bamboo_symbol(token.start[1] == _T('@') ?
-			_T("UNQUOTE-SPLICING") : _T("UNQUOTE")), cons(nil, nil));
+		*atom = cons(bamboo_symbol(token.start[1] == '@' ?
+			"UNQUOTE-SPLICING" : "UNQUOTE"), cons(nil, nil));
 		return bamboo_parse_expr(token.end, end, &car(cdr(*atom)));
-	case _T(';'):
+	case ';':
 		// Comment ahead.
 		return parse_comment(&token, end, atom);
 	default:
@@ -895,28 +914,29 @@ bamboo_error_t bamboo_parse_expr(const TCHAR *input, const TCHAR **end,
 /**
  * Parses primitives from a given token.
  *
- * @param  token Pointer to token structure that holds the beginning and the end
- *               of a token string.
- * @param  end   Pointer to the end of the last parsed part of the expression.
- * @param  atom  Pointer to an atom structure that will hold the parsed atom.
- * @return       BAMBOO_OK if we were able to parse the token correctly.
+ * @param token Pointer to token structure that holds the beginning and the end
+ *              of a token string.
+ * @param end   Pointer to the end of the last parsed part of the expression.
+ * @param atom  Pointer to an atom structure that will hold the parsed atom.
+ *
+ * @return BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_primitive(const token_t *token, const char **end,
 							   atom_t *atom) {
-	TCHAR *buf;
-	TCHAR *buftmp;
-	const TCHAR *tmp;
+	char *buf;
+	char *buftmp;
+	const char *tmp;
 #ifndef _tcstold
 	int cret = 0;
 #endif
 
 	// Check if we are dealing with a hash expression.
-	if (token->start[0] == _T('#'))
+	if (token->start[0] == '#')
 		return parse_hash_expr(token, end, atom);
 
 	// Check if we are dealing with a number of some kind.
-	if (((token->start[0] >= _T('0')) && (token->start[0] <= _T('9'))) ||
-			(token->start[0] == _T('+')) || (token->start[0] == _T('-'))) {
+	if (((token->start[0] >= '0') && (token->start[0] <= '9')) ||
+			(token->start[0] == '+') || (token->start[0] == '-')) {
 		int64_t integer;
 		long double dfloat;
 
@@ -925,8 +945,8 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 		buf = strcpyse(token->start, token->end);
 
 		// Check if we just have a simple + or - function call.
-		if (((buf[0] == _T('+')) || (buf[0] == _T('-'))) &&
-				(buf[1] == _T('\0'))) {
+		if (((buf[0] == '+') || (buf[0] == '-')) &&
+				(buf[1] == '\0')) {
 			goto symbolparser;
 		}
 #endif  // _MSC_VER
@@ -943,7 +963,7 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 			buf = NULL;
 		}
 #else
-		integer = _tcstoll(token->start, &buf, 0);
+		integer = strtoll(token->start, &buf, 0);
 #endif  // _MSC_VER
 		if (buf == token->end) {
 #ifndef _WIN32_WCE
@@ -953,10 +973,10 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 
 				if (integer == LLONG_MAX) {
 					return bamboo_error(BAMBOO_ERROR_NUM_OVERFLOW,
-						_T("An integer overflow occured while parsing"));
+						"An integer overflow occured while parsing");
 				} else if (integer == LLONG_MIN) {
 					return bamboo_error(BAMBOO_ERROR_NUM_UNDERFLOW,
-						_T("An integer underflow occured while parsing"));
+						"An integer underflow occured while parsing");
 				}
 			}
 #endif  // _WIN32_WCE
@@ -971,17 +991,17 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 			return BAMBOO_OK;
 		}
 
-		// Try to parse an float.
-#ifndef _tcstold
-		cret = _stscanf(token->start, "%lg", &dfloat);
+		// Try to parse a float.
+#ifndef strtold
+		cret = sscanf(token->start, "%lg", &dfloat);
 		if ((cret != 0) && (cret != EOF)) {
 			buf = token->end;
 		} else {
 			buf = NULL;
 		}
 #else
-		dfloat = _tcstold(token->start, &buf);
-#endif  // _tcstold
+		dfloat = strtold(token->start, &buf);
+#endif  // strtold
 		if (buf == token->end) {
 #ifndef _WIN32_WCE
 			// Check for overflows/underflows.
@@ -990,10 +1010,10 @@ bamboo_error_t parse_primitive(const token_t *token, const TCHAR **end,
 
 				if (dfloat == HUGE_VALL) {
 					return bamboo_error(BAMBOO_ERROR_NUM_OVERFLOW,
-						_T("An float overflow occured while parsing"));
+						"An float overflow occured while parsing");
 				} else if (dfloat == LDBL_MIN) {
 					return bamboo_error(BAMBOO_ERROR_NUM_UNDERFLOW,
-						_T("An float underflow occured while parsing"));
+						"An float underflow occured while parsing");
 				}
 			}
 #endif  // _WIN32_WCE
@@ -1014,21 +1034,21 @@ symbolparser:
 #endif  // _MSC_VER
 
 	// Allocate string for symbol upper-case conversion.
-	buf = (TCHAR *)malloc(sizeof(TCHAR) * (token->end - token->start + 1));
+	buf = (char *)malloc(sizeof(char) * (token->end - token->start + 1));
 	if (buf == NULL) {
-		return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate string ")
-			_T("for symbol upper-case conversion"));
+		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string "
+			"for symbol upper-case conversion");
 	}
 
 	// Convert the symbol to upper-case.
 	buftmp = buf;
 	tmp = token->start;
 	while (tmp != token->end)
-		*buftmp++ = _totupper(*tmp++);
-	*buftmp = _T('\0');
+		*buftmp++ = (char)toupper((int)*tmp++);
+	*buftmp = '\0';
 
 	// Check if we are dealing with a NIL symbol.
-	if (_tcscmp(buf, _T("NIL")) == 0) {
+	if (strcmp(buf, "NIL") == 0) {
 		*atom = nil;
 	} else {
 		// Looks like a regular symbol.
@@ -1046,63 +1066,65 @@ symbolparser:
 /**
  * Parses primitives that begin with the special hash (#) notation.
  *
- * @param  token Pointer to token structure that holds the beginning and the end
- *               of a token string.
- * @param  end   Pointer to the end of the last parsed part of the expression.
- * @param  atom  Pointer to an atom structure that will hold the parsed atom.
- * @return       BAMBOO_OK if we were able to parse the token correctly.
+ * @param token Pointer to token structure that holds the beginning and the end
+ *              of a token string.
+ * @param end   Pointer to the end of the last parsed part of the expression.
+ * @param atom  Pointer to an atom structure that will hold the parsed atom.
+ *
+ * @return BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_hash_expr(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_hash_expr(const token_t *token, const char **end,
 							   atom_t *atom) {
 	// Check if we don't have an invalid syntax.
 	if ((token->start + 1) == token->end) {
 		return bamboo_error(BAMBOO_ERROR_SYNTAX,
-			_T("Special values must have at least one character after the # ")
-			_T("character"));
+			"Special values must have at least one character after the # "
+			"character");
 	}
 
 	// Check which kind of special value we are dealing with.
 	switch (token->start[1]) {
-	case _T('F'):
-	case _T('f'):
+	case 'F':
+	case 'f':
 		*atom = bamboo_boolean(false);
 		*end = token->end;
 		return BAMBOO_OK;
-	case _T('T'):
-	case _T('t'):
+	case 'T':
+	case 't':
 		*atom = bamboo_boolean(true);
 		*end = token->end;
 		return BAMBOO_OK;
 	default:
 		return bamboo_error(BAMBOO_ERROR_SYNTAX,
-			_T("Invalid type of hash expression"));
+			"Invalid type of hash expression");
 	}
 }
 
 /**
  * Parses a string from a given token.
  *
- * @param  token Pointer to token structure that holds the beginning and the end
- *               of a token string.
- * @param  end   Pointer to the end of the last parsed part of the expression.
- * @param  atom  Pointer to an atom structure that will hold the parsed atom.
- * @return       BAMBOO_OK if we were able to parse the token correctly.
+ * @param token Pointer to token structure that holds the beginning and the end
+ *              of a token string.
+ * @param end   Pointer to the end of the last parsed part of the expression.
+ * @param atom  Pointer to an atom structure that will hold the parsed atom.
+ *
+ * @return BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_string(const token_t *token, const char **end,
 							atom_t *atom) {
 	size_t len;
-	TCHAR *buf;
-	TCHAR *buftmp;
-	const TCHAR *tmp;
+	char *buf;
+	char *buftmp;
+	const char *tmp;
 
 	// Calculate the length of our string.
 	tmp = token->end;
 	len = 0;
-	while (*tmp != _T('\"')) {
+	while (*tmp != '\"') {
 		// Check if the string is never terminated.
-		if (*tmp == _T('\0')) {
+		if (*tmp == '\0') {
 			*end = tmp;
-			return bamboo_error(BAMBOO_ERROR_SYNTAX, _T("String never terminated"));
+			return bamboo_error(BAMBOO_ERROR_SYNTAX, "String never terminated");
 		}
 
 		tmp++;
@@ -1110,19 +1132,19 @@ bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
 	}
 
 	// Allocate space for our string.
-	buf = (TCHAR *)malloc((len + 1) * sizeof(TCHAR));
+	buf = (char *)malloc((len + 1) * sizeof(char));
 	if (buf == NULL) {
-		return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate string ")
-			_T("for string atom"));
+		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string "
+			"for string atom");
 	}
 
 	// Pre-terminate the string.
-	buf[len] = _T('\0');
+	buf[len] = '\0';
 
 	// Copy the string into our buffer.
 	tmp = token->end;
 	buftmp = buf;
-	while (*tmp != _T('\"')) {
+	while (*tmp != '\"') {
 		*buftmp = *tmp++;
 		buftmp++;
 	}
@@ -1138,14 +1160,15 @@ bamboo_error_t parse_string(const token_t *token, const TCHAR **end,
 /**
  * Parses an list expression.
  *
- * @param  input Pointer to the list expression string starting at the first
- *               character after the opening parenthesis.
- * @param  end   Pointer to the end of the last parsed part of the expression.
- * @param  atom  Pointer to the atom object that will hold the result of the
- *               parsing operation.
- * @return       BAMBOO_OK if the parsing was sucessful.
+ * @param input Pointer to the list expression string starting at the first
+ *              character after the opening parenthesis.
+ * @param end   Pointer to the end of the last parsed part of the expression.
+ * @param atom  Pointer to the atom object that will hold the result of the
+ *              parsing operation.
+ *
+ * @return BAMBOO_OK if the parsing was successful.
  */
-bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
+bamboo_error_t parse_list(const char *input, const char **end, atom_t *atom) {
 	token_t token;
 	bamboo_error_t err;
 	atom_t tmp_atom;
@@ -1161,20 +1184,20 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 
 	while (!(err = lex(token.end, &token))) {
 		// Check if we have a pair.
-		if (token.start[0] == _T('.')) {
+		if (token.start[0] == '.') {
 			token_t test_token;
 
 			// Check if the pair separator is the first token in the atom.
 			if (nilp(*atom)) {
 				return bamboo_error(BAMBOO_ERROR_SYNTAX,
-					_T("Pair delimiter without left-hand atom"));
+					"Pair delimiter without left-hand atom");
 			}
 
 			// Check if we have something after the pair separator.
 			err = lex(token.end, &test_token);
-			if (err || (test_token.start[0] == _T(')'))) {
+			if (err || (test_token.start[0] == ')')) {
 				return bamboo_error(BAMBOO_ERROR_SYNTAX,
-					_T("Pair ends without right-hand atom"));
+					"Pair ends without right-hand atom");
 			}
 
 			// Move to the next token.
@@ -1196,7 +1219,7 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 				continue;
 			default:
 				// We haven't implemented this new special condition apparently.
-				return bamboo_error(err, _T("Unknown special condition"));
+				return bamboo_error(err, "Unknown special condition");
 			}
 		} else if (err) {
 			// Looks like we've errored out.
@@ -1212,7 +1235,7 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 			// Check if we are trying to append something to a pair.
 			if (!nilp(*last_atom)) {
 				return bamboo_error(BAMBOO_ERROR_SYNTAX,
-					_T("Tried to append an atom to a pair"));
+					"Tried to append an atom to a pair");
 			}
 
 			// Check if we are dealing with a pair.
@@ -1235,22 +1258,23 @@ bamboo_error_t parse_list(const TCHAR *input, const TCHAR **end, atom_t *atom) {
 /**
  * Parses a comment token.
  *
- * @param  token Pointer to token structure that holds the beginning and the end
- *               of a token string.
- * @param  end   Pointer to the end of the last parsed part of the expression.
- * @param  atom  Pointer to an atom structure that will hold the parsed atom.
- * @return       BAMBOO_OK if we were able to parse the token correctly.
+ * @param token Pointer to token structure that holds the beginning and the end
+ *              of a token string.
+ * @param end   Pointer to the end of the last parsed part of the expression.
+ * @param atom  Pointer to an atom structure that will hold the parsed atom.
+ *
+ * @return BAMBOO_OK if we were able to parse the token correctly.
  */
-bamboo_error_t parse_comment(const token_t *token, const TCHAR **end,
+bamboo_error_t parse_comment(const token_t *token, const char **end,
 							 atom_t *atom) {
-	const TCHAR *tmp;
+	const char *tmp;
 
 	// We already know this thing has no future, so...
 	*atom = nil;
 
 	// Skip to the nearest newline character or string terminator.
 	tmp = token->end;
-	while ((*tmp != _T('\0')) && (*tmp != _T('\n'))) {
+	while ((*tmp != '\0') && (*tmp != '\n')) {
 		tmp++;
 	}
 
@@ -1273,10 +1297,11 @@ bamboo_error_t parse_comment(const token_t *token, const TCHAR **end,
  * overflows in deep recursions, so it had to be re-written, for the older
  * version check the commit 0d1bc6c.
  *
- * @param  expr   Expression to be evaluated.
- * @param  env    Environment list to use for this evaluation.
- * @param  result Pointer to the resulting atom of the evaluation.
- * @return        BAMBOO_OK if the evaluation was successful.
+ * @param expr   Expression to be evaluated.
+ * @param env    Environment list to use for this evaluation.
+ * @param result Pointer to the resulting atom of the evaluation.
+ *
+ * @return BAMBOO_OK if the evaluation was successful.
  *
  * @see https://lwh.jp/lisp/continuations.html
  */
@@ -1320,20 +1345,20 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 			// Check if it's a special form to be evaluated.
 			if (op.type == ATOM_TYPE_SYMBOL) {
 				// Check which special form we need to evaluate.
-				if (_tcscmp(*op.value.symbol, _T("QUOTE")) == 0) {
+				if (strcmp(*op.value.symbol, "QUOTE") == 0) {
 					// Check if we have the single required arguments.
 					if (bamboo_list_count(args) != 1) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							_T("Wrong number of arguments. Expected 1"));
+							"Wrong number of arguments. Expected 1");
 					}
 
 					// Return the arguments without evaluating.
 					*result = car(args);
-				} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
+				} else if (strcmp(*op.value.symbol, "IF") == 0) {
 					// Check if we have the right number of arguments.
 					if (bamboo_list_count(args) != 3) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							_T("Wrong number of arguments. Expected 3"));
+							"Wrong number of arguments. Expected 3");
 					}
 
 					// Place it in the stack for later evaluation.
@@ -1342,13 +1367,13 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 					expr = car(args);
 
 					continue;
-				} else if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
+				} else if (strcmp(*op.value.symbol, "DEFINE") == 0) {
 					atom_t symbol;
 
 					// Check if we have both of the required 2 arguments.
 					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							_T("Wrong number of arguments. Expected at least 2"));
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Get the reference symbol.
@@ -1371,8 +1396,8 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						// Check if we actually have a symbol for closure name.
 						if (symbol.type != ATOM_TYPE_SYMBOL) {
 							return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-								_T("First element of argument 0 list should be a ")
-								_T("symbol"));
+								"First element of argument 0 list should be a "
+								"symbol");
 						}
 
 						// Put the symbol in th environment.
@@ -1381,40 +1406,40 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						break;
 					default:
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-							_T("Argument 0 should be of type symbol or pair"));
+							"Argument 0 should be of type symbol or pair");
 					}
-				} else if (_tcscmp(*op.value.symbol, _T("LAMBDA")) == 0) {
+				} else if (strcmp(*op.value.symbol, "LAMBDA") == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							_T("Wrong number of arguments. Expected at least 2"));
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Make the closure.
 					err = bamboo_closure(env, car(args), cdr(args), result);
-				} else if (_tcscmp(*op.value.symbol, _T("DEFINE-MACRO")) == 0) {
+				} else if (strcmp(*op.value.symbol, "DEFINE-MACRO") == 0) {
 					atom_t name;
 					atom_t macro;
 
 					// Check if we have both of the required 2 arguments.
 					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							_T("Wrong number of arguments. Expected at least 2"));
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Check if the first argument is defined like a define
 					// lambda shorthand.
 					if (car(args).type != ATOM_TYPE_PAIR) {
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-							_T("First argument must be a pair or a list like when ")
-							_T("defining a function using only define"));
+							"First argument must be a pair or a list like when "
+							"defining a function using only define");
 					}
 
 					// Get macro name.
 					name = car(car(args));
 					if (name.type != ATOM_TYPE_SYMBOL) {
 						return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-							_T("Macro name must be of type symbol"));
+							"Macro name must be of type symbol");
 					}
 
 					// Make the macro.
@@ -1427,11 +1452,11 @@ bamboo_error_t bamboo_eval_expr(atom_t expr, env_t env, atom_t *result) {
 						*result = name;
 						(void)bamboo_env_set(env, name, macro);
 					}
-				} else if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
+				} else if (strcmp(*op.value.symbol, "APPLY") == 0) {
 					// Check if we have both of the required 2 arguments.
 					if (bamboo_list_count(args) < 2) {
 						return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-							_T("Wrong number of arguments. Expected at least 2"));
+							"Wrong number of arguments. Expected at least 2");
 					}
 
 					// Evaluate the apply by the magic of the stack.
@@ -1476,10 +1501,11 @@ push:
  * This is how the stack frame structure should look like:
  * (parent env evaluated-op (pending-arg...) (evaluated-arg...) (body...))
  *
- * @param  parent Parent stack frame.
- * @param  env    Environment for the stack frame to be evaluated in.
- * @param  tail   Rest of the stack frame to be evaluated later.
- * @return        A brand new stack frame atom.
+ * @param parent Parent stack frame.
+ * @param env    Environment for the stack frame to be evaluated in.
+ * @param tail   Rest of the stack frame to be evaluated later.
+ *
+ * @return A brand new stack frame atom.
  *
  * @see https://lwh.jp/lisp/continuations.html
  */
@@ -1495,12 +1521,13 @@ frame_t new_stack_frame(frame_t parent, env_t env, atom_t tail) {
  * To be honest I have no clue how this whole thing is working, I just want to
  * make sure we don't run into stack overflows.
  *
- * @param  stack Pointer to the stack frame we are currently evaluating.
- * @param  expr  Pointer to the expression that will be grabbed from the stack
- *               to be evaluated later.
- * @param  env   Pointer to the environment where the current expression will be
- *               evaluated in. This will also come from our stack frame.
- * @return       BAMBOO_OK if everything went fine.
+ * @param stack Pointer to the stack frame we are currently evaluating.
+ * @param expr  Pointer to the expression that will be grabbed from the stack to
+ *              be evaluated later.
+ * @param env   Pointer to the environment where the current expression will be
+ *              evaluated in. This will also come from our stack frame.
+ *
+ * @return BAMBOO_OK if everything went fine.
  *
  * @see https://lwh.jp/lisp/continuations.html
  */
@@ -1532,12 +1559,13 @@ bamboo_error_t eval_expr_exec(frame_t *stack, atom_t *expr, env_t *env) {
  * To be honest I have no clue how this whole thing is working, I just want to
  * make sure we don't run into stack overflows.
  *
- * @param  stack Pointer to the stack frame we are currently evaluating.
- * @param  expr  Pointer to the expression that will be grabbed from the stack
- *               to be evaluated later.
- * @param  env   Pointer to the environment where the current expression will be
- *               evaluated in. This will also come from our stack frame.
- * @return       BAMBOO_OK if everything went fine.
+ * @param stack Pointer to the stack frame we are currently evaluating.
+ * @param expr  Pointer to the expression that will be grabbed from the stack to
+ *              be evaluated later.
+ * @param env   Pointer to the environment where the current expression will be
+ *              evaluated in. This will also come from our stack frame.
+ *
+ * @return BAMBOO_OK if everything went fine.
  *
  * @see https://lwh.jp/lisp/continuations.html
  */
@@ -1556,7 +1584,7 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
 	op = bamboo_list_ref(*stack, STACK_EVAL_OP_INDEX);
 	args = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 
-	// Get all of the parameters from the stack frame.
+	// Get all parameters from the stack frame.
 	*env = bamboo_env_new(car(op));
 	arg_names = car(cdr(op));
 	body = cdr(cdr(op));
@@ -1575,7 +1603,7 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
 		// Not enough argument values given the amount of argument names.
 		if (nilp(args)) {
  			return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
- 				_T("Argument value list ended prematurely"));
+ 				"Argument value list ended prematurely");
 		}
 
 		// Push the argument into the environment.
@@ -1589,7 +1617,7 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
 	// Check if we have arguments remaining.
 	if (!nilp(args)) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("Arguments left over after iterating through argument names"));
+			"Arguments left over after iterating through argument names");
 	}
 
 	bamboo_list_set(*stack, STACK_EVAL_ARGS_INDEX, nil);
@@ -1603,12 +1631,13 @@ bamboo_error_t eval_expr_bind(frame_t *stack, atom_t *expr, env_t *env) {
  * To be honest I have no clue how this whole thing is working, I just want to
  * make sure we don't run into stack overflows.
  *
- * @param  stack Pointer to the stack frame we are currently evaluating.
- * @param  expr  Pointer to the expression that will be grabbed from the stack
- *               to be evaluated later.
- * @param  env   Pointer to the environment where the current expression will be
- *               evaluated in. This will also come from our stack frame.
- * @return       BAMBOO_OK if everything went fine.
+ * @param stack Pointer to the stack frame we are currently evaluating.
+ * @param expr  Pointer to the expression that will be grabbed from the stack to
+ *              be evaluated later.
+ * @param env   Pointer to the environment where the current expression will be
+ *              evaluated in. This will also come from our stack frame.
+ *
+ * @return BAMBOO_OK if everything went fine.
  *
  * @see https://lwh.jp/lisp/continuations.html
  */
@@ -1628,7 +1657,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 
 	// Handle the apply special form.
 	if (op.type == ATOM_TYPE_SYMBOL) {
-		if (_tcscmp(*op.value.symbol, _T("APPLY")) == 0) {
+		if (strcmp(*op.value.symbol, "APPLY") == 0) {
 			// Replace the current frame.
 			*stack = car(*stack);
 			*stack = new_stack_frame(*stack, *env, nil);
@@ -1638,7 +1667,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 			// Check if we actually have an arguments list.
 			if (!listp(args)) {
 				return bamboo_error(BAMBOO_ERROR_SYNTAX,
-					_T("Arguments atom must be of list type"));
+					"Arguments atom must be of list type");
 			}
 
 			// Go to the next one.
@@ -1656,7 +1685,7 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
 	} else if (op.type != ATOM_TYPE_CLOSURE) {
 		// Looks like we don't have anything that's "apply"able.
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-			_T("Applyable op must be either a built-in or a closure"));
+			"Applyable op must be either a built-in or a closure");
 	}
 
 	return eval_expr_bind(stack, expr, env);
@@ -1670,18 +1699,19 @@ bamboo_error_t eval_expr_apply(frame_t *stack, atom_t *expr, env_t *env) {
  * To be honest I have no clue how this whole thing is working, I just want to
  * make sure we don't run into stack overflows.
  *
- * @param  stack  Pointer to the stack frame we are currently evaluating.
- * @param  expr   Pointer to the expression that will be grabbed from the stack
- *                to be evaluated later.
- * @param  env    Pointer to the environment where the current expression will be
- *                evaluated in. This will also come from our stack frame.
- * @param  result Pointer to the return value of the evaluated stack frame.
- * @return        BAMBOO_OK if everything went fine.
+ * @param stack  Pointer to the stack frame we are currently evaluating.
+ * @param expr   Pointer to the expression that will be grabbed from the stack
+ *               to be evaluated later.
+ * @param env    Pointer to the environment where the current expression will be
+ *               evaluated in. This will also come from our stack frame.
+ * @param result Pointer to the return value of the evaluated stack frame.
+ *
+ * @return BAMBOO_OK if everything went fine.
  *
  * @see https://lwh.jp/lisp/continuations.html
  */
 bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
-		atom_t *result) {
+								atom_t *result) {
 	atom_t op;
 	atom_t args;
 	atom_t body;
@@ -1714,17 +1744,17 @@ bamboo_error_t eval_expr_return(frame_t *stack, atom_t *expr, env_t *env,
 			return eval_expr_bind(stack, expr, env);
 		}
 	} else if (op.type == ATOM_TYPE_SYMBOL) {
-		// Finished working on an special form.
-		if (_tcscmp(*op.value.symbol, _T("DEFINE")) == 0) {
+		// Finished working on a special form.
+		if (strcmp(*op.value.symbol, "DEFINE") == 0) {
 			atom_t symbol;
 
 			symbol = bamboo_list_ref(*stack, STACK_EVAL_ARGS_INDEX);
 			(void)bamboo_env_set(*env, symbol, *result);
 			*stack = car(*stack);
-			*expr = cons(bamboo_symbol(_T("QUOTE")), cons(symbol, nil));
+			*expr = cons(bamboo_symbol("QUOTE"), cons(symbol, nil));
 
 			return BAMBOO_OK;
-		} else if (_tcscmp(*op.value.symbol, _T("IF")) == 0) {
+		} else if (strcmp(*op.value.symbol, "IF") == 0) {
 			args = bamboo_list_ref(*stack, STACK_PENDING_ARGS_INDEX);
 
 			// Choose which path to go for an if statement.
@@ -1775,8 +1805,9 @@ store_argument:
 /**
  * Creates a new child environment list.
  *
- * @param  parent Parent environment to this new child.
- * @return        New child environment list.
+ * @param parent Parent environment to this new child.
+ *
+ * @return New child environment list.
  */
 env_t bamboo_env_new(env_t parent) {
 	return cons(parent, nil);
@@ -1786,11 +1817,11 @@ env_t bamboo_env_new(env_t parent) {
  * Gets a symbol definition from an environment list recursively searching
  * through its parents.
  *
- * @param  env    Environment list to search for the desired symbol in.
- * @param  symbol Symbol you're searching for.
- * @param  atom   Pointer to the resulting atom of the symbol definition.
- * @return        BAMBOO_OK if the symbol was found. BAMBOO_ERROR_UNBOUND
- *                otherwise.
+ * @param env    Environment list to search for the desired symbol in.
+ * @param symbol Symbol you're searching for.
+ * @param atom   Pointer to the resulting atom of the symbol definition.
+ *
+ * @return BAMBOO_OK if the symbol was found. BAMBOO_ERROR_UNBOUND otherwise.
  */
 bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 	env_t parent = car(env);
@@ -1817,11 +1848,11 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
 
 	// Check if we've reached the end of our parent environments to search for.
 	if (nilp(parent)) {
-		TCHAR msg[ERROR_MSG_STR_LEN + 1];
+		char msg[ERROR_MSG_STR_LEN + 1];
 
 		// Build the error string.
-		_sntprintf(msg, ERROR_MSG_STR_LEN, _T("Symbol '") SPEC_STR _T("' not ")
-			_T("found in any of the environments"), *symbol.value.symbol);
+		snprintf(msg, ERROR_MSG_STR_LEN, "Symbol '%s' not found in any of the "
+			"environments", *symbol.value.symbol);
 		return bamboo_error(BAMBOO_ERROR_UNBOUND, msg);
 	}
 
@@ -1833,10 +1864,11 @@ bamboo_error_t bamboo_env_get(env_t env, atom_t symbol, atom_t *atom) {
  * Creates a new symbol inside an environment or changes it if it already
  * exists in the specified environment.
  *
- * @param  env    Parent environment where the symbol resides.
- * @param  symbol Symbol to be created or edited.
- * @param  value  Value attributed to the symbol.
- * @return        BAMBOO_OK if the operation was successful.
+ * @param env    Parent environment where the symbol resides.
+ * @param symbol Symbol to be created or edited.
+ * @param value  Value attributed to the symbol.
+ *
+ * @return BAMBOO_OK if the operation was successful.
  */
 bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
 	env_t current = cdr(env);
@@ -1869,12 +1901,13 @@ bamboo_error_t bamboo_env_set(env_t env, atom_t symbol, atom_t value) {
  * Creates a new built-in function symbol inside an environment or changes it if
  * it already exists in the specified environment.
  *
- * @param  env  Parent environment where the built-in function symbol resides.
- * @param  name Name of the symbol for the built-in function.
- * @param  func Built-in function that will be called for this symbol.
- * @return      BAMBOO_OK if the operation was successful.
+ * @param env  Parent environment where the built-in function symbol resides.
+ * @param name Name of the symbol for the built-in function.
+ * @param func Built-in function that will be called for this symbol.
+ *
+ * @return BAMBOO_OK if the operation was successful.
  */
-bamboo_error_t bamboo_env_set_builtin(env_t env, const TCHAR *name,
+bamboo_error_t bamboo_env_set_builtin(env_t env, const char *name,
 									  builtin_func_t func) {
 	return bamboo_env_set(env, bamboo_symbol(name), bamboo_builtin(func));
 }
@@ -1992,37 +2025,37 @@ void gc(bool respect_marks) {
  *             you're responsible for freeing this pointer later.
  * @param atom Atom to have its contents represented.
  */
-void bamboo_expr_str(TCHAR **buf, atom_t atom) {
-	TCHAR *tmp;
+void bamboo_expr_str(char **buf, atom_t atom) {
+	char *tmp;
 	size_t buflen = 0;
 
 	switch (atom.type) {
 	case ATOM_TYPE_NIL:
 		// nil
-		*buf = _tcsdup(_T("nil"));
+		*buf = strdup("nil");
 		break;
 	case ATOM_TYPE_SYMBOL:
 		// Symbol
-		*buf = _tcsdup(*atom.value.symbol);
+		*buf = strdup(*atom.value.symbol);
 		break;
 	case ATOM_TYPE_INTEGER:
 		// Integer
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = I64_MAX_DIGITS;
 #else
-		buflen = _sntprintf(NULL, 0, _T("%lld"), atom.value.integer);
+		buflen = snprintf(NULL, 0, "%lld", atom.value.integer);
 #endif  // _MSC_VER
 
-		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		*buf = (char *)malloc((buflen + 1) * sizeof(char));
 		if (*buf == NULL) {
-			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent integer atom"));
+			fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent integer atom");
 		}
 
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
-		_sntprintf(*buf, buflen + 1, _T("%I64d"), atom.value.integer);
+		snprintf(*buf, buflen + 1, "%I64d", atom.value.integer);
 #else
-		_sntprintf(*buf, buflen + 1, _T("%lld"), atom.value.integer);
+		snprintf(*buf, buflen + 1, "%lld", atom.value.integer);
 #endif  // _MSC_VER
 		break;
 	case ATOM_TYPE_FLOAT:
@@ -2030,41 +2063,41 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = LONGDOUBLE_MAX_DIGITS;
 #else
-		buflen = _sntprintf(NULL, 0, _T("%Lg"), atom.value.dfloat);
+		buflen = snprintf(NULL, 0, "%Lg", atom.value.dfloat);
 #endif  // _MSC_VER
 
-		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		*buf = (char *)malloc((buflen + 1) * sizeof(char));
 		if (*buf == NULL) {
-			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent float atom"));
+			fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent float atom");
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("%Lg"), atom.value.dfloat);
+		snprintf(*buf, buflen + 1, "%Lg", atom.value.dfloat);
 		break;
 	case ATOM_TYPE_BOOLEAN:
 		// Boolean
 		buflen = 2;
-		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		*buf = (char *)malloc((buflen + 1) * sizeof(char));
 		if (*buf == NULL) {
-			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent boolean atom"));
+			fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent boolean atom");
 		}
 
 		tmp = *buf;
-		tmp[0] = _T('#');
-		tmp[1] = (atom.value.boolean) ? _T('t') : _T('f');
-		tmp[2] = _T('\0');
+		tmp[0] = '#';
+		tmp[1] = (atom.value.boolean) ? 't' : 'f';
+		tmp[2] = '\0';
 		break;
 	case ATOM_TYPE_STRING:
 		// String
-		buflen = _tcslen(*atom.value.str) + 2;
-		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		buflen = strlen(*atom.value.str) + 2;
+		*buf = (char *)malloc((buflen + 1) * sizeof(char));
 		if (*buf == NULL) {
-			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent string atom"));
+			fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent string atom");
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("\"") SPEC_STR _T("\""),
+		snprintf(*buf, buflen + 1, "\"%s\"",
 			*atom.value.str);
 		break;
 	case ATOM_TYPE_PAIR:
@@ -2072,19 +2105,19 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 		buflen = 3;
 
 		// Start by allocating the basic string and adding the leading paren.
-		*buf = (TCHAR *)malloc(buflen * sizeof(TCHAR));
+		*buf = (char *)malloc(buflen * sizeof(char));
 		if (*buf == NULL)
 			goto err_alloc_pair_str;
-		(*buf)[0] = _T('(');
-		(*buf)[1] = _T('\0');
+		(*buf)[0] = '(';
+		(*buf)[1] = '\0';
 
 		// Grab the first item of the pair and append it to the string.
 		bamboo_expr_str(&tmp, car(atom));
-		buflen += _tcslen(tmp);
-		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+		buflen += strlen(tmp);
+		*buf = (char *)realloc(*buf, buflen * sizeof(char));
 		if (*buf == NULL)
 			goto err_alloc_pair_str;
-		_tcscat(*buf, tmp);
+		strcat(*buf, tmp);
 		free(tmp);
 
 		// Iterate over the right-hand side of the pair since it may be a list.
@@ -2094,13 +2127,13 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 			if (atom.type == ATOM_TYPE_PAIR) {
 				bamboo_expr_str(&tmp, car(atom));
 
-				buflen += _tcslen(tmp) + 1;
-				*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+				buflen += strlen(tmp) + 1;
+				*buf = (char *)realloc(*buf, buflen * sizeof(char));
 				if (*buf == NULL)
 					goto err_alloc_pair_str;
 
-				_tcscat(*buf, _T(" "));
-				_tcscat(*buf, tmp);
+				strcat(*buf, " ");
+				strcat(*buf, tmp);
 
 				free(tmp);
 				atom = cdr(atom);
@@ -2108,13 +2141,13 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 				// It was just a simple pair.
 				bamboo_expr_str(&tmp, atom);
 
-				buflen += _tcslen(tmp) + 3;
-				*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+				buflen += strlen(tmp) + 3;
+				*buf = (char *)realloc(*buf, buflen * sizeof(char));
 				if (*buf == NULL)
 					goto err_alloc_pair_str;
 
-				_tcscat(*buf, _T(" . "));
-				_tcscat(*buf, tmp);
+				strcat(*buf, " . ");
+				strcat(*buf, tmp);
 
 				free(tmp);
 				break;
@@ -2122,129 +2155,129 @@ void bamboo_expr_str(TCHAR **buf, atom_t atom) {
 		}
 
 		// Append the last paren and terminate the string.
-		_tcscat(*buf, _T(")"));
+		strcat(*buf, ")");
 		break;
 err_alloc_pair_str:
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-			_T("string to represent pair atom"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+			"represent pair atom");
 		break;
 	case ATOM_TYPE_BUILTIN:
 		// Built-in Function
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = 32;
 #else
-		buflen = _sntprintf(NULL, 0, _T("#<BUILTIN:%p>"), atom.value.builtin);
+		buflen = snprintf(NULL, 0, "#<BUILTIN:%p>", atom.value.builtin);
 #endif  // _MSC_VER
 
-		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		*buf = (char *)malloc((buflen + 1) * sizeof(char));
 		if (*buf == NULL) {
-			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent built-in function atom"));
+			fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent built-in function atom");
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("#<BUILTIN:%p>"), atom.value.builtin);
+		snprintf(*buf, buflen + 1, "#<BUILTIN:%p>", atom.value.builtin);
 		break;
 	case ATOM_TYPE_CLOSURE:
 		// Closure
 		buflen = 14;
 
 		// Allocate the string and begin with the type identifier.
-		*buf = (TCHAR *)malloc(buflen * sizeof(TCHAR));
+		*buf = (char *)malloc(buflen * sizeof(char));
 		if (*buf == NULL)
 			goto err_alloc_closure_str;
-		(*buf)[0] = _T('\0');
-		_tcscat(*buf, _T("#<FUNCTION:"));
+		(*buf)[0] = '\0';
+		strcat(*buf, "#<FUNCTION:");
 
 		// Do we have arguments?
 		if (!nilp(car(cdr(atom)))) {
 			bamboo_expr_str(&tmp, car(cdr(atom)));
 
-			buflen += _tcslen(tmp);
-			*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+			buflen += strlen(tmp);
+			*buf = (char *)realloc(*buf, buflen * sizeof(char));
 			if (*buf == NULL)
 				goto err_alloc_closure_str;
 
-			_tcscat(*buf, tmp);
+			strcat(*buf, tmp);
 			free(tmp);
 		}
 
 		// Append the closure body.
-		_tcscat(*buf, _T(" "));
+		strcat(*buf, " ");
 		bamboo_expr_str(&tmp, cdr(cdr(atom)));
-		buflen += _tcslen(tmp);
-		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+		buflen += strlen(tmp);
+		*buf = (char *)realloc(*buf, buflen * sizeof(char));
 		if (*buf == NULL)
 			goto err_alloc_closure_str;
-		_tcscat(*buf, tmp);
+		strcat(*buf, tmp);
 		free(tmp);
 
 		// Finalize the string.
-		_tcscat(*buf, _T(">"));
+		strcat(*buf, ">");
 		break;
 err_alloc_closure_str:
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent closure atom"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent closure atom");
 		break;
 	case ATOM_TYPE_MACRO:
 		// Macro
 		buflen = 11;
 
 		// Allocate the string and begin with the type identifier.
-		*buf = (TCHAR *)malloc(buflen * sizeof(TCHAR));
+		*buf = (char *)malloc(buflen * sizeof(char));
 		if (*buf == NULL)
 			goto err_alloc_macro_str;
-		(*buf)[0] = _T('\0');
-		_tcscat(*buf, _T("#<MACRO:"));
+		(*buf)[0] = '\0';
+		strcat(*buf, "#<MACRO:");
 
 		// Do we have arguments?
 		if (!nilp(car(cdr(atom)))) {
 			bamboo_expr_str(&tmp, car(cdr(atom)));
 
-			buflen += _tcslen(tmp);
-			*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+			buflen += strlen(tmp);
+			*buf = (char *)realloc(*buf, buflen * sizeof(char));
 			if (*buf == NULL)
 				goto err_alloc_macro_str;
 
-			_tcscat(*buf, tmp);
+			strcat(*buf, tmp);
 			free(tmp);
 		}
 
 		// Append the macro body.
-		_tcscat(*buf, _T(" "));
+		strcat(*buf, " ");
 		bamboo_expr_str(&tmp, cdr(cdr(atom)));
-		buflen += _tcslen(tmp);
-		*buf = (TCHAR *)realloc(*buf, buflen * sizeof(TCHAR));
+		buflen += strlen(tmp);
+		*buf = (char *)realloc(*buf, buflen * sizeof(char));
 		if (*buf == NULL)
 			goto err_alloc_macro_str;
-		_tcscat(*buf, tmp);
+		strcat(*buf, tmp);
 		free(tmp);
 
 		// Finalize the string.
-		_tcscat(*buf, _T(">"));
+		strcat(*buf, ">");
 		break;
 err_alloc_macro_str:
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent macro atom"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent macro atom");
 		break;
 	case ATOM_TYPE_POINTER:
 		// Pointer
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 		buflen = 32;
 #else
-		buflen = _sntprintf(NULL, 0, _T("#<POINTER:%p>"), atom.value.pointer);
+		buflen = snprintf(NULL, 0, "#<POINTER:%p>", atom.value.pointer);
 #endif  // _MSC_VER
 
-		*buf = (TCHAR *)malloc((buflen + 1) * sizeof(TCHAR));
+		*buf = (char *)malloc((buflen + 1) * sizeof(char));
 		if (*buf == NULL) {
-			fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-				_T("string to represent pointer atom"));
+			fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string to "
+				"represent pointer atom");
 		}
 
-		_sntprintf(*buf, buflen + 1, _T("#<POINTER:%p>"), atom.value.pointer);
+		snprintf(*buf, buflen + 1, "#<POINTER:%p>", atom.value.pointer);
 		break;
 	default:
 		// Unknown
-		*buf = _tcsdup(_T("Unknown type. Don't know how to display this"));
+		*buf = strdup("Unknown type. Don't know how to display this");
 	}
 }
 
@@ -2254,7 +2287,7 @@ err_alloc_macro_str:
  * @param atom Atom to have its contents printed.
  */
 void bamboo_print_expr(atom_t atom) {
-	TCHAR *buf;
+	char *buf;
 
 	// Get the atom content as a string and print it.
 	bamboo_expr_str(&buf, atom);
@@ -2272,45 +2305,44 @@ void bamboo_print_expr(atom_t atom) {
  *            responsible for freeing this pointer later.
  * @param err Error code.
  */
-void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err) {
+void bamboo_error_type_str(char **buf, bamboo_error_t err) {
 	// Get the error type string.
 	switch (err) {
 	case BAMBOO_OK:
-		*buf = _tcsdup(_T("OK"));
+		*buf = strdup("OK");
 		break;
 	case BAMBOO_PAREN_END:
-		*buf = _tcsdup(_T("PARENTHESIS ENDED"));
+		*buf = strdup("PARENTHESIS ENDED");
 		break;
 	case BAMBOO_ERROR_SYNTAX:
-		*buf = _tcsdup(_T("SYNTAX ERROR"));
+		*buf = strdup("SYNTAX ERROR");
 		break;
 	case BAMBOO_ERROR_EMPTY:
-		*buf = _tcsdup(_T("EMPTY STATEMENT"));
+		*buf = strdup("EMPTY STATEMENT");
 		break;
 	case BAMBOO_ERROR_UNBOUND:
-		*buf = _tcsdup(_T("UNBOUND SYMBOL ERROR"));
+		*buf = strdup("UNBOUND SYMBOL ERROR");
 		break;
 	case BAMBOO_ERROR_ARGUMENTS:
-		*buf = _tcsdup(_T("INCORRECT ARGUMENT ERROR"));
+		*buf = strdup("INCORRECT ARGUMENT ERROR");
 		break;
 	case BAMBOO_ERROR_WRONG_TYPE:
-		*buf = _tcsdup(_T("WRONG TYPE ERROR"));
+		*buf = strdup("WRONG TYPE ERROR");
 		break;
 	case BAMBOO_ERROR_NUM_OVERFLOW:
-		*buf = _tcsdup(_T("NUMERIC OVERFLOW ERROR"));
+		*buf = strdup("NUMERIC OVERFLOW ERROR");
 		break;
 	case BAMBOO_ERROR_NUM_UNDERFLOW:
-		*buf = _tcsdup(_T("NUMERIC UNDERFLOW ERROR"));
+		*buf = strdup("NUMERIC UNDERFLOW ERROR");
 		break;
 	case BAMBOO_ERROR_ALLOCATION:
-		*buf = _tcsdup(_T("MEMORY ALLOCATION ERROR"));
+		*buf = strdup("MEMORY ALLOCATION ERROR");
 		break;
 	case BAMBOO_ERROR_UNKNOWN:
-		*buf = _tcsdup(_T("UNKNOWN ERROR"));
+		*buf = strdup("UNKNOWN ERROR");
 		break;
 	default:
-		*buf = _tcsdup(_T("I have no clue why you're here, because you ")
-			_T("shouldn't"));
+		*buf = strdup("I have no clue why you're here, because you shouldn't");
 		break;
 	}
 }
@@ -2321,16 +2353,16 @@ void bamboo_error_type_str(TCHAR **buf, bamboo_error_t err) {
  * @param err Error code to print the message.
  */
 void bamboo_print_error(bamboo_error_t err) {
-	TCHAR *err_type = NULL;
+	char *err_type = NULL;
 
 	// Get the error type string and print it out.
 	bamboo_error_type_str(&err_type, err);
 	putstrerr(err_type);
-	putstrerr(_T(": "));
+	putstrerr(": ");
 
 	// Print the error detail string and a line break.
 	putstrerr(bamboo_error_detail());
-	putstrerr(LINEBREAK);
+	putstrerr("\n");
 
 	// Free up our temporary buffer.
 	free(err_type);
@@ -2341,21 +2373,21 @@ void bamboo_print_error(bamboo_error_t err) {
  *
  * @param str String to debug tokens in.
  */
-void bamboo_print_tokens(const TCHAR *str) {
+void bamboo_print_tokens(const char *str) {
 	token_t token;
 	bamboo_error_t err;
 
 	// Go through tokens in string.
 	token.end = str;
 	while (!(err = lex(token.end, &token))) {
-		TCHAR *buf;
+		char *buf;
 		int i;
 
 		// Allocate string for the token string.
-		buf = (TCHAR *)malloc(((token.end - token.start) + 1) * sizeof(TCHAR));
+		buf = (char *)malloc(((token.end - token.start) + 1) * sizeof(char));
 		if (buf == NULL) {
 			fatal_error(BAMBOO_ERROR_ALLOCATION,
-				_T("Can't allocate string for token printing"));
+				"Can't allocate string for token printing");
 			return;
 		}
 
@@ -2363,10 +2395,10 @@ void bamboo_print_tokens(const TCHAR *str) {
 		for (i = 0; i < (token.end - token.start); i++) {
 			buf[i] = token.start[i];
 		}
-		buf[i] = _T('\0');
+		buf[i] = '\0';
 
 		// Print the token and free the string.
-		_tprintf(_T("'") SPEC_STR _T("' "), buf);
+		printf("'%s' ", buf);
 		free(buf);
 	}
 }
@@ -2382,7 +2414,7 @@ void bamboo_print_tokens(const TCHAR *str) {
  *
  * @return Last detailed error message.
  */
-const TCHAR* bamboo_error_detail(void) {
+const char* bamboo_error_detail(void) {
 	return bamboo_error_msg;
 }
 
@@ -2391,19 +2423,20 @@ const TCHAR* bamboo_error_detail(void) {
  *
  * @param msg Error message to be set.
  */
-void set_error_msg(const TCHAR *msg) {
-	_tcsncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
+void set_error_msg(const char *msg) {
+	strncpy(bamboo_error_msg, msg, ERROR_MSG_STR_LEN);
 }
 
 /**
  * Sets the internal error message variable and returns the specified error
  * code.
  *
- * @param  err Error code to be returned.
- * @param  msg Error message to be set.
- * @return     Error code passed in 'err'.
+ * @param err Error code to be returned.
+ * @param msg Error message to be set.
+ *
+ * @return Error code passed in 'err'.
  */
-bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg) {
+bamboo_error_t bamboo_error(bamboo_error_t err, const char *msg) {
 	set_error_msg(msg);
 	return err;
 }
@@ -2415,7 +2448,7 @@ bamboo_error_t bamboo_error(bamboo_error_t err, const TCHAR *msg) {
  * @param err Error code to be returned.
  * @param msg Error message to be set.
  */
-void fatal_error(bamboo_error_t err, const TCHAR *msg) {
+void fatal_error(bamboo_error_t err, const char *msg) {
 	// Print the error message.
 	set_error_msg(msg);
 	bamboo_print_error(err);
@@ -2435,7 +2468,7 @@ bamboo_error_t builtin_car(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects a single argument"));
+			"This function expects a single argument");
 	}
 
 	// Get the first element of a pair otherwise just return nil.
@@ -2453,7 +2486,7 @@ bamboo_error_t builtin_cdr(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects a single argument"));
+			"This function expects a single argument");
 	}
 
 	// Get the second element of a pair otherwise just return nil.
@@ -2471,7 +2504,7 @@ bamboo_error_t builtin_cons(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 2 arguments"));
+			"This function expects 2 arguments");
 	}
 
 	// Create the pair.
@@ -2490,7 +2523,7 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments summing them.
@@ -2519,8 +2552,8 @@ bamboo_error_t builtin_sum(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 		// Go to the next argument.
@@ -2544,7 +2577,7 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments subtracting them.
@@ -2592,8 +2625,8 @@ bamboo_error_t builtin_subtract(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -2618,7 +2651,7 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments multiplying them.
@@ -2666,8 +2699,8 @@ bamboo_error_t builtin_multiply(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -2692,7 +2725,7 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments dividing them.
@@ -2729,8 +2762,8 @@ bamboo_error_t builtin_divide(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -2752,7 +2785,7 @@ bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
 	*result = nil;
 	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 2 arguments"));
+			"This function expects 2 arguments");
 	}
 
 	// Get the X argument.
@@ -2764,8 +2797,8 @@ bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
 	} else if (nx.type != ATOM_TYPE_FLOAT) {
 		// Doesn't look like a numeric to me...
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-			_T("Invalid type of argument. This function only accepts ")
-			_T("numerics"));
+			"Invalid type of argument. This function only accepts "
+			"numerics");
 	}
 
 	// Get the Y argument.
@@ -2777,8 +2810,8 @@ bamboo_error_t builtin_expt(atom_t args, atom_t *result) {
 	} else if (ny.type != ATOM_TYPE_FLOAT) {
 		// Doesn't look like a numeric to me...
 		return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-			_T("Invalid type of argument. This function only accepts ")
-			_T("numerics"));
+			"Invalid type of argument. This function only accepts "
+			"numerics");
 	}
 
 	// Set the result atom.
@@ -2795,7 +2828,7 @@ bamboo_error_t builtin_modulo(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 2 arguments"));
+			"This function expects 2 arguments");
 	}
 
 	// Perform the calculation.
@@ -2835,8 +2868,8 @@ bamboo_error_t builtin_modulo(atom_t args, atom_t *result) {
 
 	// Doesn't look like a numeric to me...
 	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-		_T("Invalid type of argument. This function only accepts ")
-		_T("numerics"));
+		"Invalid type of argument. This function only accepts "
+		"numerics");
 }
 
 // (floor x) -> int
@@ -2846,7 +2879,7 @@ bamboo_error_t builtin_floor(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects a single argument"));
+			"This function expects a single argument");
 	}
 
 	// Round the number.
@@ -2864,8 +2897,8 @@ bamboo_error_t builtin_floor(atom_t args, atom_t *result) {
 	// Doesn't look like a numeric to me...
 	*result = nil;
 	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-		_T("Invalid type of argument. This function only accepts ")
-		_T("numerics"));
+		"Invalid type of argument. This function only accepts "
+		"numerics");
 }
 
 // (round x) -> int
@@ -2875,7 +2908,7 @@ bamboo_error_t builtin_round(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects a single argument"));
+			"This function expects a single argument");
 	}
 
 	// Round the number.
@@ -2893,8 +2926,8 @@ bamboo_error_t builtin_round(atom_t args, atom_t *result) {
 	// Doesn't look like a numeric to me...
 	*result = nil;
 	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-		_T("Invalid type of argument. This function only accepts ")
-		_T("numerics"));
+		"Invalid type of argument. This function only accepts "
+		"numerics");
 }
 
 // (ceil x) -> int
@@ -2904,7 +2937,7 @@ bamboo_error_t builtin_ceil(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects a single argument"));
+			"This function expects a single argument");
 	}
 
 	// Round the number.
@@ -2922,8 +2955,8 @@ bamboo_error_t builtin_ceil(atom_t args, atom_t *result) {
 	// Doesn't look like a numeric to me...
 	*result = nil;
 	return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-		_T("Invalid type of argument. This function only accepts ")
-		_T("numerics"));
+		"Invalid type of argument. This function only accepts "
+		"numerics");
 }
 
 // (not bool) -> bool
@@ -2931,7 +2964,7 @@ bamboo_error_t builtin_not(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects exactly 1 argument"));
+			"This function expects exactly 1 argument");
 	}
 
 	// Populate the result atom.
@@ -2948,7 +2981,7 @@ bamboo_error_t builtin_and(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -2978,7 +3011,7 @@ bamboo_error_t builtin_or(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -3008,7 +3041,7 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -3044,8 +3077,8 @@ bamboo_error_t builtin_numeq(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -3066,7 +3099,7 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -3102,8 +3135,8 @@ bamboo_error_t builtin_lt(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -3124,7 +3157,7 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 2 arguments"));
+			"This function expects at least 2 arguments");
 	}
 
 	// Iterate through the arguments checking them.
@@ -3160,8 +3193,8 @@ bamboo_error_t builtin_gt(atom_t args, atom_t *result) {
 		} else {
 			// Non-numeric argument.
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Invalid type of argument. This function only accepts ")
-				_T("numerics"));
+				"Invalid type of argument. This function only accepts "
+				"numerics");
 		}
 
 next:
@@ -3183,7 +3216,7 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 2) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 2 arguments"));
+			"This function expects 2 arguments");
 	}
 
 	// Get the two atoms to be tested.
@@ -3210,7 +3243,7 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 		*result = bamboo_boolean(*a.value.symbol == *b.value.symbol);
 		break;
 	case ATOM_TYPE_STRING:
-		*result = bamboo_boolean(_tcscmp(*a.value.str, *b.value.str) == 0);
+		*result = bamboo_boolean(strcmp(*a.value.str, *b.value.str) == 0);
 		break;
 	case ATOM_TYPE_BOOLEAN:
 		*result = bamboo_boolean(a.value.boolean == b.value.boolean);
@@ -3224,6 +3257,9 @@ bamboo_error_t builtin_eq(atom_t args, atom_t *result) {
 	case ATOM_TYPE_BUILTIN:
 		*result = bamboo_boolean(a.value.builtin == b.value.builtin);
 		break;
+	case ATOM_TYPE_POINTER:
+		*result = bamboo_boolean(a.value.pointer == b.value.pointer);
+		break;
 	}
 
 	return BAMBOO_OK;
@@ -3234,7 +3270,7 @@ bamboo_error_t builtin_nilp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_NIL);
@@ -3246,7 +3282,7 @@ bamboo_error_t builtin_pairp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_PAIR);
@@ -3258,7 +3294,7 @@ bamboo_error_t builtin_symbolp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_SYMBOL);
@@ -3270,7 +3306,7 @@ bamboo_error_t builtin_integerp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_INTEGER);
@@ -3282,7 +3318,7 @@ bamboo_error_t builtin_floatp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_FLOAT);
@@ -3294,7 +3330,7 @@ bamboo_error_t builtin_numericp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean((car(args).type == ATOM_TYPE_INTEGER) ||
@@ -3307,7 +3343,7 @@ bamboo_error_t builtin_booleanp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_BOOLEAN);
@@ -3319,7 +3355,7 @@ bamboo_error_t builtin_builtinp(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_BUILTIN);
@@ -3331,7 +3367,7 @@ bamboo_error_t builtin_closurep(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_CLOSURE);
@@ -3343,7 +3379,7 @@ bamboo_error_t builtin_macrop(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects 1 argument"));
+			"This function expects 1 argument");
 	}
 
 	*result = bamboo_boolean(car(args).type == ATOM_TYPE_MACRO);
@@ -3361,7 +3397,7 @@ bamboo_error_t builtin_display(atom_t args, atom_t *result) {
 
 	// Print the concatenated string.
 	putstr(*result->value.str);
-	putstr(LINEBREAK);
+	putchar('\n');
 
 	return BAMBOO_OK;
 }
@@ -3370,23 +3406,23 @@ bamboo_error_t builtin_display(atom_t args, atom_t *result) {
 bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 	size_t buflen = 0;
 	size_t tmplen = 0;
-	TCHAR *tmpbuf = NULL;
-	TCHAR *buf = NULL;
+	char *tmpbuf = NULL;
+	char *buf = NULL;
 
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) < 1) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects at least 1 argument"));
+			"This function expects at least 1 argument");
 	}
 
 	// Get a clean slate.
-	buf = (TCHAR *)malloc(sizeof(TCHAR));
+	buf = (char *)malloc(sizeof(char));
 	if (buf == NULL) {
 		*result = nil;
-		return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-			_T("new string to begin concatenation"));
+		return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+			"new string to begin concatenation");
 	}
-	buf[0] = _T('\0');
+	buf[0] = '\0';
 
 	// Iterate through the arguments printing them them.
 	while (!nilp(args)) {
@@ -3394,68 +3430,68 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 		case ATOM_TYPE_STRING:
 			// Get the argument string length.
 			tmpbuf = *car(args).value.str;
-			tmplen = _tcslen(tmpbuf);
+			tmplen = strlen(tmpbuf);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
-			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
 			if (buf == NULL) {
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("new string to concatenate string atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate string atom");
 			}
 
 			// Actually concatenate the strings.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			break;
 		case ATOM_TYPE_NIL:
 			break;
 		case ATOM_TYPE_SYMBOL:
 			// Get the argument string length.
-			tmplen = _tcslen(*car(args).value.symbol);
+			tmplen = strlen(*car(args).value.symbol);
 			buflen += tmplen;
 
 			// Reallocate the string to fit the new concatenated string.
-			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
 			if (buf == NULL) {
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("new string to concatenate symbol atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate symbol atom");
 			}
 
 			// Actually concatenate the strings.
-			_tcscat(buf, *car(args).value.symbol);
+			strcat(buf, *car(args).value.symbol);
 			break;
 		case ATOM_TYPE_INTEGER:
 			// Get the length of the string we'll need to concatenate this number.
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			tmplen = I64_MAX_DIGITS;
 #else
-			tmplen = _sntprintf(NULL, 0, _T("%lld"), car(args).value.integer);
+			tmplen = snprintf(NULL, 0, "%lld", car(args).value.integer);
 #endif  // _MSC_VER
-			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
+			tmpbuf = (char *)malloc((tmplen + 1) * sizeof(char));
 			if (tmpbuf == NULL) {
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("string to display integer atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"string to display integer atom");
 			}
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
-			_sntprintf(tmpbuf, tmplen + 1, _T("%I64d"), car(args).value.integer);
+			snprintf(tmpbuf, tmplen + 1, "%I64d", car(args).value.integer);
 #else
-			_sntprintf(tmpbuf, tmplen + 1, _T("%lld"), car(args).value.integer);
+			snprintf(tmpbuf, tmplen + 1, "%lld", car(args).value.integer);
 #endif  // _MSC_VER
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
-			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
 			if (buf == NULL) {
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("new string to concatenate integer atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate integer atom");
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		case ATOM_TYPE_FLOAT:
@@ -3463,57 +3499,57 @@ bamboo_error_t builtin_concat(atom_t args, atom_t *result) {
 #if defined(_MSC_VER) && (_MSC_VER <= 1400)
 			tmplen = LONGDOUBLE_MAX_DIGITS;
 #else
-			tmplen = _sntprintf(NULL, 0, _T("%Lg"), car(args).value.dfloat);
+			tmplen = snprintf(NULL, 0, "%Lg", car(args).value.dfloat);
 #endif  // _MSC_VER
-			tmpbuf = (TCHAR *)malloc((tmplen + 1) * sizeof(TCHAR));
+			tmpbuf = (char *)malloc((tmplen + 1) * sizeof(char));
 			if (tmpbuf == NULL) {
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("string to display float atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"string to display float atom");
 			}
-			_sntprintf(tmpbuf, tmplen + 1, _T("%Lg"), car(args).value.dfloat);
+			snprintf(tmpbuf, tmplen + 1, "%Lg", car(args).value.dfloat);
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
-			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
 			if (buf == NULL) {
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("new string to concatenate float atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate float atom");
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		case ATOM_TYPE_BOOLEAN:
 			// Determine the string needed to concatenate depending on value.
 			if (car(args).value.boolean) {
-				tmpbuf = _tcsdup(_T("TRUE"));
+				tmpbuf = strdup("TRUE");
 				tmplen = 4;
 			} else {
-				tmpbuf = _tcsdup(_T("FALSE"));
+				tmpbuf = strdup("FALSE");
 				tmplen = 5;
 			}
 
 			// Reallocate the string to fit the new concatenated string.
 			buflen += tmplen;
-			buf = (TCHAR *)realloc(buf, (buflen + 1) * sizeof(TCHAR));
+			buf = (char *)realloc(buf, (buflen + 1) * sizeof(char));
 			if (buf == NULL) {
 
 				*result = nil;
-				return bamboo_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate ")
-					_T("new string to concatenate boolean atom"));
+				return bamboo_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate "
+					"new string to concatenate boolean atom");
 			}
 
 			// Actually concatenate the strings and free our temporary string.
-			_tcscat(buf, tmpbuf);
+			strcat(buf, tmpbuf);
 			free(tmpbuf);
 			break;
 		default:
 			*result = nil;
 			return bamboo_error(BAMBOO_ERROR_WRONG_TYPE,
-				_T("Don't know how to display this type of atom"));
+				"Don't know how to display this type of atom");
 		}
 
 		// Go to the next argument.
@@ -3532,11 +3568,11 @@ bamboo_error_t builtin_newline(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 0) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects no arguments"));
+			"This function expects no arguments");
 	}
 
 	// Print the newline string.
-	putstr(LINEBREAK);
+	putchar('\n');
 
 	*result = nil;
 	return BAMBOO_OK;
@@ -3549,14 +3585,14 @@ bamboo_error_t builtin_display_env(atom_t args, atom_t *result) {
 	// Check if we have the right number of arguments.
 	if (bamboo_list_count(args) != 0) {
 		return bamboo_error(BAMBOO_ERROR_ARGUMENTS,
-			_T("This function expects no arguments"));
+			"This function expects no arguments");
 	}
 
 	// Grab our root environment.
 	current = cdr(*bamboo_root_env);
 
 	// Iterate over the symbols in the environment filtering out built-ins.
-	putstr(_T("symbol\t\tvalue") LINEBREAK);
+	putstr("symbol\t\tvalue\n");
 	while (!nilp(current)) {
 		atom_t item = car(current);
 
@@ -3565,9 +3601,9 @@ bamboo_error_t builtin_display_env(atom_t args, atom_t *result) {
 			goto next_item;
 
 		// Print out the symbol name and its value.
-		_tprintf(SPEC_STR _T("\t\t"), *car(item).value.symbol);
+		printf("%s\t\t", *car(item).value.symbol);
 		bamboo_print_expr(cdr(item));
-		putstr(LINEBREAK);
+		putchar('\n');
 
 next_item:
 		// Go to the next item.
@@ -3587,9 +3623,10 @@ next_item:
 /**
  * Gets the boolean value of a given atom.
  *
- * @param  atom Atom to get its boolean value.
- * @return      TRUE if the atom is of type boolean and is true, or if its any
- *              other type of atom. FALSE only for a false boolean atom.
+ * @param atom Atom to get its boolean value.
+ *
+ * @return TRUE if the atom is of type boolean and is true, or if its any other
+ *         type of atom. FALSE only for a false boolean atom.
  */
 bool atom_boolean_val(atom_t atom) {
 	// All non-boolean atoms are true.
@@ -3604,11 +3641,10 @@ bool atom_boolean_val(atom_t atom) {
  *
  * @param str String to be printed.
  */
-void putstr(const TCHAR *str) {
-	const TCHAR *tmp = str;
-
+void putstr(const char *str) {
+	const char *tmp = str;
 	while (*tmp)
-		_puttchar(*tmp++);
+		putchar(*tmp++);
 }
 
 /**
@@ -3616,32 +3652,32 @@ void putstr(const TCHAR *str) {
  *
  * @param str String to be printed.
  */
-void putstrerr(const TCHAR *str) {
-	const TCHAR *tmp = str;
-
+void putstrerr(const char *str) {
+	const char *tmp = str;
 	while (*tmp)
-		_puttc(*tmp++, stderr);
+		putc(*tmp++, stderr);
 }
 
 /**
  * Copies a string from start to a a specific end pointer appending the NULL
  * terminator.
  *
- * @param  start Pointer to the beginning of the string.
- * @param  end   Pointer to the end of the string.
- * @return       Newly allocated and copied string. Remember to free it!
+ * @param start Pointer to the beginning of the string.
+ * @param end   Pointer to the end of the string.
+ *
+ * @return Newly allocated and copied string. Remember to free it!
  */
-TCHAR* strcpyse(const TCHAR *start, const TCHAR *end) {
-	TCHAR *buf;
-	TCHAR *tmp_buf;
-	const TCHAR *tmp_start;
+char* strcpyse(const char *start, const char *end) {
+	char *buf;
+	char *tmp_buf;
+	const char *tmp_start;
 	size_t len = end - start;
 
 	// Allocate space for the string.
-	buf = (TCHAR *)malloc((len + 1) * sizeof(TCHAR));
+	buf = (char *)malloc((len + 1) * sizeof(char));
 	if (buf == NULL) {
-		fatal_error(BAMBOO_ERROR_ALLOCATION, _T("Can't allocate string for ")
-			_T("string start and end copying"));
+		fatal_error(BAMBOO_ERROR_ALLOCATION, "Can't allocate string for string"
+			"start and end copying");
 		return NULL;
 	}
 
@@ -3651,7 +3687,7 @@ TCHAR* strcpyse(const TCHAR *start, const TCHAR *end) {
 	while (tmp_start != end) {
 		*tmp_buf++ = *tmp_start++;
 	}
-	*tmp_buf = _T('\0');
+	*tmp_buf = '\0';
 
 	return buf;
 }
@@ -3659,11 +3695,12 @@ TCHAR* strcpyse(const TCHAR *start, const TCHAR *end) {
 /**
  * Checks if a string contains a point character.
  *
- * @param  str String to be tested.
- * @return     TRUE if there was a point character somewhere in the string.
+ * @param str String to be tested.
+ *
+ * @return TRUE if there was a point character somewhere in the string.
  */
-bool contains_point(const TCHAR *str) {
-	const TCHAR *tmp = str;
+bool contains_point(const char *str) {
+	const char *tmp = str;
 
 	while (*tmp) {
 		if (*tmp++ == '.')
@@ -3672,46 +3709,3 @@ bool contains_point(const TCHAR *str) {
 
 	return false;
 }
-
-#ifdef IMPLEMENT_SNWPRINTF
-/**
- * Fixes the fact that Unix systems never implemented snwprintf. This is absurd
- * and should've been fixed a long time ago so we don't need to create horrible
- * hacks like this!
- *
- * @param  buf    Pointer to a buffer where the resulting C-string is stored.
- * @param  len    Maximum number of bytes to be used in the buffer.
- * @param  format Format string that follows the same specifications as printf.
- * @param  ...    Values to be used to replace specifiers in the format string.
- * @return        The number of characters that would have been written if len
- *                had been sufficiently large, not counting the terminating
- *                NULL character.
- */
-int snwprintf(wchar_t *buf, size_t len, const wchar_t *format, ...) {
-	int ret;
-	size_t tmplen;
-
-	va_list args;
-	va_start(args, format);
-
-	// Check if we are using this for string sizing.
-	if (buf == NULL) {
-		tmplen = SNWPRINTF_MAX_LEN;
-		buf = (wchar_t *)malloc((tmplen + 1) * sizeof(wchar_t));
-	} else {
-		tmplen = len;
-	}
-
-	// Actually perform the operation.
-	ret = vswprintf(buf, tmplen, format, args);
-
-	// Free up our allocated temporary string if we just wanted to test for
-	// size. So wasteful... If only ISO C had added this function to the
-	// standard...
-	if (tmplen != len)
-		free(buf);
-
-	va_end(args);
-	return ret;
-}
-#endif  // IMPLEMENT_SNWPRINTF
