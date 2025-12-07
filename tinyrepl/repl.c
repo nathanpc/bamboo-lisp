@@ -61,7 +61,7 @@ int main(void) {
 				printf("^ ");
 
 				// Show the error message.
-				bamboo_print_error(err);
+				bamboo_error_print(err);
 				fprintf(stderr, "\n");
 
 				continue;
@@ -70,7 +70,7 @@ int main(void) {
 			// Evaluate the parsed expression.
 			err = bamboo_eval_expr(parsed, env, &result);
 			IF_BAMBOO_ERROR(err) {
-				bamboo_print_error(err);
+				bamboo_error_print(err);
 				fprintf(stderr, "\n");
 
 				continue;

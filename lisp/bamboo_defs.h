@@ -78,6 +78,9 @@ struct pair_s {
     atom_t atom[2];
 };
 
+// Universal nil atom.
+static const atom_t nil = { ATOM_TYPE_NIL };
+
 #ifdef __cplusplus
 }
 #endif
